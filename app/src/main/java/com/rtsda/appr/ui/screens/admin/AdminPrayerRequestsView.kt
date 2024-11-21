@@ -1,29 +1,44 @@
 package com.rtsda.appr.ui.screens.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rtsda.appr.data.model.PrayerRequest
+import com.rtsda.appr.data.model.RequestStatus
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun AdminPrayerRequestsView(
     viewModel: AdminPrayerRequestsViewModel,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = uiState.isLoading,
+        onRefresh = { viewModel.loadPrayerRequests() }
+    )
 
     Scaffold(
         topBar = {
@@ -38,54 +53,108 @@ fun AdminPrayerRequestsView(
         },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            uiState.error != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(uiState.error ?: "Unknown error occurred")
-                }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.prayerRequests) { request ->
-                        PrayerRequestCard(
-                            request = request,
-                            onPrayedForToggle = { viewModel.togglePrayedFor(request) },
-                            onDelete = { viewModel.deletePrayerRequest(request) }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .pullRefresh(pullRefreshState)
+        ) {
+            when {
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = uiState.error ?: "An error occurred",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
+                uiState.prayerRequests.isEmpty() && !uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No prayer requests yet",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(uiState.prayerRequests) { request ->
+                            PrayerRequestCard(
+                                request = request,
+                                onStatusChange = { newStatus ->
+                                    viewModel.updateRequestStatus(request, newStatus)
+                                },
+                                onDelete = {
+                                    viewModel.deleteRequest(request)
+                                }
+                            )
+                        }
+                    }
+                }
             }
+
+            PullRefreshIndicator(
+                refreshing = uiState.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                scale = true
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PrayerRequestCard(
+fun PrayerRequestCard(
     request: PrayerRequest,
-    onPrayedForToggle: () -> Unit,
+    onStatusChange: (RequestStatus) -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    val dateFormatter = remember { SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault()) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Prayer Request") },
+            text = { Text("Are you sure you want to delete this prayer request?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = onPrayedForToggle
+        colors = CardDefaults.cardColors(
+            containerColor = if (request.isPrivate)
+                MaterialTheme.colorScheme.surfaceVariant
+            else MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier
@@ -97,31 +166,54 @@ private fun PrayerRequestCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = request.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = request.email,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text = request.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (request.isPrivate) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Private",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+
+                IconButton(
+                    onClick = { showDeleteDialog = true }
                 ) {
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete prayer request"
-                        )
-                    }
-                    Checkbox(
-                        checked = request.prayedFor,
-                        onCheckedChange = { onPrayedForToggle() }
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete request"
                     )
+                }
+            }
+
+            Text(
+                text = dateFormatter.format(request.timestamp.toDate()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = request.request,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (request.request.length > 100) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(if (expanded) "Show Less" else "Show More")
                 }
             }
 
@@ -129,47 +221,55 @@ private fun PrayerRequestCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = request.requestType.toString(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                        .format(Date(request.timestampMillis)),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                RequestStatus.values().forEach { status ->
+                    FilterChip(
+                        selected = request.status == status,
+                        onClick = { onStatusChange(status) },
+                        label = { Text(status.name) }
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = request.requestText,
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            if (request.prayedFor && request.prayedForDate != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Prayed for on: ${
-                        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                            .format(Date(request.prayedForDateMillis!!))
-                    }",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            if (request.email.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = "Email",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = request.email,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
-            if (request.isConfidential) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Confidential",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error
-                )
+            if (request.phone.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .clickable {
+                            // Handle phone number click
+                        }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Phone",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = request.phone,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }

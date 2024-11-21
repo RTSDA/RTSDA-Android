@@ -2,18 +2,20 @@ package com.rtsda.appr.ui.screens.admin
 
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.NetworkCapabilities
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
 import com.rtsda.appr.data.model.PrayerRequest
-import com.rtsda.appr.data.model.RequestType
+import com.rtsda.appr.data.model.RequestStatus
+import com.rtsda.appr.service.PrayerRequestService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 data class AdminPrayerRequestsUiState(
@@ -24,10 +26,10 @@ data class AdminPrayerRequestsUiState(
 
 @HiltViewModel
 class AdminPrayerRequestsViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore,
     private val connectivityManager: ConnectivityManager
 ) : ViewModel() {
 
+    private val service = PrayerRequestService.getInstance()
     private val _uiState = MutableStateFlow(AdminPrayerRequestsUiState(isLoading = true))
     val uiState: StateFlow<AdminPrayerRequestsUiState> = _uiState.asStateFlow()
 
@@ -54,72 +56,31 @@ class AdminPrayerRequestsViewModel @Inject constructor(
         connectivityManager.registerDefaultNetworkCallback(networkCallback!!)
     }
 
-    private fun loadPrayerRequests() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
-            firestore.collection("prayerRequests")
-                .addSnapshotListener { snapshot, e ->
-                    if (e != null) {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = e.message
-                        )
-                        return@addSnapshotListener
-                    }
-
-                    if (snapshot != null) {
-                        val updatedRequests = mutableListOf<PrayerRequest>()
-                        
-                        for (document in snapshot.documents) {
-                            val data = document.data
-                            if (data != null) {
-                                try {
-                                    val requestType = (data["requestType"] as? String)?.let {
-                                        RequestType.fromString(it)
-                                    } ?: RequestType.OTHER
-
-                                    val prayerRequest = PrayerRequest(
-                                        id = document.id,
-                                        name = data["name"] as? String ?: "",
-                                        email = data["email"] as? String ?: "",
-                                        requestText = data["details"] as? String ?: "", 
-                                        details = data["details"] as? String ?: "", 
-                                        isConfidential = data["isConfidential"] as? Boolean ?: false,
-                                        requestType = requestType,
-                                        timestamp = data["timestamp"] as? Timestamp ?: Timestamp.now(),
-                                        prayedFor = data["prayedFor"] as? Boolean ?: false,
-                                        prayedForDate = data["prayedForDate"] as? Timestamp
-                                    )
-                                    updatedRequests.add(prayerRequest)
-                                } catch (e: Exception) {
-                                    println("Error processing document ${document.id}: ${e.message}")
-                                }
-                            }
-                        }
-
-                        _uiState.value = _uiState.value.copy(
-                            prayerRequests = updatedRequests.sortedByDescending { it.timestampMillis },
-                            isLoading = false,
-                            error = null
-                        )
-                    }
-                }
-        }
+    fun loadPrayerRequests() {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        service.getPrayerRequests()
+            .onEach { requests ->
+                _uiState.value = AdminPrayerRequestsUiState(
+                    prayerRequests = requests.sortedByDescending { it.timestamp.seconds },
+                    isLoading = false
+                )
+            }
+            .catch { e ->
+                Timber.e(e, "Error loading prayer requests")
+                _uiState.value = AdminPrayerRequestsUiState(
+                    isLoading = false,
+                    error = e.message ?: "Error loading prayer requests"
+                )
+            }
+            .launchIn(viewModelScope)
     }
 
-    fun togglePrayedFor(request: PrayerRequest) {
+    fun updateRequestStatus(request: PrayerRequest, status: RequestStatus) {
         viewModelScope.launch {
             try {
-                firestore.collection("prayerRequests")
-                    .document(request.id)
-                    .update(
-                        mapOf(
-                            "prayedFor" to !request.prayedFor,
-                            "prayedForDate" to if (!request.prayedFor) Timestamp.now() else null
-                        )
-                    )
+                service.updateStatus(request.id, status)
             } catch (e: Exception) {
+                Timber.e(e, "Error updating prayer request status")
                 _uiState.value = _uiState.value.copy(
                     error = "Failed to update prayer request: ${e.message}"
                 )
@@ -127,13 +88,12 @@ class AdminPrayerRequestsViewModel @Inject constructor(
         }
     }
 
-    fun deletePrayerRequest(request: PrayerRequest) {
+    fun deleteRequest(request: PrayerRequest) {
         viewModelScope.launch {
             try {
-                firestore.collection("prayerRequests")
-                    .document(request.id)
-                    .delete()
+                service.deleteRequest(request.id)
             } catch (e: Exception) {
+                Timber.e(e, "Error deleting prayer request")
                 _uiState.value = _uiState.value.copy(
                     error = "Failed to delete prayer request: ${e.message}"
                 )

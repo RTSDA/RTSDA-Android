@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.addCallback
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -20,14 +21,18 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rtsda.appr.navigation.NavigationItem
 import com.rtsda.appr.navigation.bottomNavItems
 import com.rtsda.appr.ui.screens.*
 import com.rtsda.appr.ui.screens.admin.*
+import com.rtsda.appr.ui.screens.admin.AdminEventViewModel
 import com.rtsda.appr.ui.theme.RTSDATheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -37,11 +42,29 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
         setContent {
             RTSDATheme {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
+
+                // Handle system back button
+                val onBackPressedCallback = remember {
+                    onBackPressedDispatcher.addCallback(this) {
+                        if (navController.previousBackStackEntry != null) {
+                            navController.navigateUp()
+                        } else {
+                            finish()
+                        }
+                    }
+                }
+
+                DisposableEffect(Unit) {
+                    onDispose {
+                        onBackPressedCallback.remove()
+                    }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -157,9 +180,43 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 composable("admin/events") {
+                                    val viewModel: AdminEventViewModel = hiltViewModel()
                                     AdminEventView(
-                                        viewModel = hiltViewModel(),
-                                        onDismiss = { navController.navigateUp() }
+                                        viewModel = viewModel,
+                                        onNavigateBack = { navController.navigateUp() },
+                                        onAddEvent = { 
+                                            viewModel.clearCache() // Clear any existing event data
+                                            navController.navigate("admin/events/form") {
+                                                popUpTo("admin/events")
+                                            }
+                                        },
+                                        onEditEvent = { eventId -> 
+                                            navController.navigate("admin/events/form?eventId=$eventId") {
+                                                popUpTo("admin/events")
+                                            }
+                                        }
+                                    )
+                                }
+                                dialog(
+                                    route = "admin/events/form?eventId={eventId}",
+                                    arguments = listOf(
+                                        navArgument("eventId") {
+                                            type = NavType.StringType
+                                            nullable = true
+                                            defaultValue = null
+                                        }
+                                    )
+                                ) { backStackEntry ->
+                                    val parentEntry = remember(backStackEntry) {
+                                        navController.getBackStackEntry("admin/events")
+                                    }
+                                    val eventId = backStackEntry.arguments?.getString("eventId")
+                                    val viewModel = hiltViewModel<AdminEventViewModel>(parentEntry)
+                                    
+                                    AdminEventFormView(
+                                        viewModel = viewModel,
+                                        onDismiss = { navController.navigateUp() },
+                                        eventId = eventId
                                     )
                                 }
                                 composable("admin/prayer_requests") {

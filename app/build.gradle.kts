@@ -92,7 +92,14 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+    implementation("androidx.compose.material3:material3:1.2.0-alpha12")
+    implementation("androidx.compose.material3:material3-android:1.2.0-alpha12")
+    implementation("androidx.compose.material3:material3-window-size-class:1.2.0-alpha12")
+    implementation("androidx.compose.material:material:1.5.4")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation("androidx.compose.runtime:runtime:1.5.4")
+    implementation("androidx.compose.runtime:runtime-livedata:1.5.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
@@ -137,7 +144,7 @@ dependencies {
     // Pull to Refresh
     implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01")
-    implementation("androidx.compose.material3:material3-window-size-class:1.2.0-alpha12")
+    implementation("androidx.compose.material:material:1.5.4")
     
     // YouTube Player
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")

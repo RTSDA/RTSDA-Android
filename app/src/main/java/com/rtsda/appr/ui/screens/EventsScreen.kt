@@ -9,85 +9,73 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.firebase.Timestamp
 import com.rtsda.appr.data.model.CalendarEvent
 import com.rtsda.appr.ui.viewmodels.EventsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun EventsScreen(
     viewModel: EventsViewModel = hiltViewModel()
 ) {
-    val events by viewModel.events.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val events by viewModel.events.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val context = LocalContext.current
     
-    val state = rememberPullToRefreshState()
-    
-    if (state.isRefreshing) {
-        LaunchedEffect(true) {
-            viewModel.fetchEvents()
-        }
-    }
-    
-    LaunchedEffect(isLoading) {
-        if (!isLoading) {
-            state.endRefresh()
-        }
-    }
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = { viewModel.fetchEvents() }
+    )
     
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(state.nestedScrollConnection)
+                .pullRefresh(pullRefreshState)
         ) {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(events) { event ->
+                items(events.sortedBy { it.startDate }) { event ->
                     EventCard(
                         event = event,
                         onAddToCalendar = {
-                            val intent = Intent(Intent.ACTION_INSERT)
-                                .setData(CalendarContract.Events.CONTENT_URI)
-                                .putExtra(CalendarContract.Events.TITLE, event.title)
-                                .putExtra(CalendarContract.Events.DESCRIPTION, event.description)
-                                .putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
-                                .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, (event.startDate * 1000).toLong())
-                                .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, (event.endDate * 1000).toLong())
-                                .putExtra(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_BUSY)
-                            
+                            val intent = Intent(Intent.ACTION_INSERT).apply {
+                                data = CalendarContract.Events.CONTENT_URI
+                                putExtra(CalendarContract.Events.TITLE, event.title)
+                                putExtra(CalendarContract.Events.DESCRIPTION, event.description)
+                                putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
+                                putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.startDateTime.time)
+                                putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.endDateTime.time)
+                            }
                             context.startActivity(intent)
                         }
                     )
                 }
             }
-            
-            PullToRefreshContainer(
+
+            PullRefreshIndicator(
+                refreshing = isLoading,
+                state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter),
-                state = state
+                scale = true
             )
-            
-            if (isLoading && !state.isRefreshing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
         }
     }
 }
@@ -98,112 +86,73 @@ fun EventCard(
     event: CalendarEvent,
     onAddToCalendar: () -> Unit
 ) {
-    val dateFormatter = SimpleDateFormat("EEEE, MMMM d, yyyy h:mm a", Locale.getDefault())
-    
-    ElevatedCard(
+    val dateFormatter = remember { SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault()) }
+
+    Card(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(16.dp)
         ) {
-            // Title
             Text(
                 text = event.title,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            
-            // Format dates
-            val startDate = Date((event.startDate * 1000).toLong())
-            val endDate = Date((event.endDate * 1000).toLong())
-            
-            // Dates
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    contentDescription = "Date",
+                    modifier = Modifier.size(16.dp)
                 )
-                Column {
-                    Text(
-                        text = "Start: ${dateFormatter.format(startDate)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "End: ${dateFormatter.format(endDate)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${dateFormatter.format(event.startDateTime)} - ${dateFormatter.format(event.endDateTime)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            
-            // Location
+
             if (event.location.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
+                        contentDescription = "Location",
+                        modifier = Modifier.size(16.dp)
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = event.location,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            
-            // Description
-            Text(
-                text = event.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            // Recurrence
-            if (event.recurrenceType != com.rtsda.appr.data.model.RecurrenceType.NONE) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarToday,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "Repeats: ${event.recurrenceType.toDisplayString()}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Add to Calendar Button
-            FilledTonalButton(
-                onClick = onAddToCalendar,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+
+            if (event.description.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = event.description,
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(
+                onClick = onAddToCalendar,
+                modifier = Modifier.align(Alignment.End)
+            ) {
                 Text("Add to Calendar")
             }
         }

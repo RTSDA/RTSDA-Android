@@ -6,12 +6,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.rtsda.appr.data.model.CalendarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -35,13 +35,13 @@ class EventsViewModel @Inject constructor(
         eventsListener = db.collection("events")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    // Handle error
+                    Timber.e(error, "Error fetching events")
                     return@addSnapshotListener
                 }
 
                 snapshot?.let { querySnapshot ->
                     _events.value = querySnapshot.documents.mapNotNull { doc ->
-                        doc.toObject(CalendarEvent::class.java)?.copy(id = doc.id)
+                        CalendarEvent.fromDocument(doc)
                     }.sortedBy { it.startDate }
                 }
             }
@@ -49,30 +49,14 @@ class EventsViewModel @Inject constructor(
 
     fun fetchEvents() {
         viewModelScope.launch {
-            _isLoading.value = true
-            
             try {
-                // Add a minimum refresh time of 1 second
-                val startTime = System.currentTimeMillis()
-                
-                val snapshot = db.collection("events")
-                    .get()
-                    .await()
-                
-                val fetchedEvents = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(CalendarEvent::class.java)?.copy(id = doc.id)
+                _isLoading.value = true
+                val snapshot = db.collection("events").get().await()
+                _events.value = snapshot.documents.mapNotNull { doc ->
+                    CalendarEvent.fromDocument(doc)
                 }.sortedBy { it.startDate }
-                
-                // Ensure minimum refresh time of 1 second
-                val elapsedTime = System.currentTimeMillis() - startTime
-                if (elapsedTime < 1000) {
-                    delay(1000 - elapsedTime)
-                }
-                
-                _events.value = fetchedEvents
             } catch (e: Exception) {
-                // Handle error
-                e.printStackTrace()
+                Timber.e(e, "Error fetching events")
             } finally {
                 _isLoading.value = false
             }

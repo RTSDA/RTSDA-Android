@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +34,9 @@ fun PrayerRequestScreen(
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
     var request by remember { mutableStateOf("") }
     var isPrivate by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("Personal") }
@@ -47,6 +50,29 @@ fun PrayerRequestScreen(
     fun isValidEmail(email: String): Boolean {
         val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$"
         return email.matches(emailRegex.toRegex())
+    }
+
+    // Phone validation function
+    fun isValidPhone(phone: String): Boolean {
+        if (phone.isEmpty()) return true // Optional field
+        // Allow formats: (123) 456-7890, 123-456-7890, 1234567890
+        val phoneRegex = """^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$""".toRegex()
+        return phone.matches(phoneRegex)
+    }
+
+    fun formatPhoneNumber(input: String): String {
+        // Strip all non-digits
+        val digitsOnly = input.replace(Regex("[^0-9]"), "")
+        
+        // Format as (XXX) XXX-XXXX if we have enough digits
+        return when {
+            digitsOnly.length > 10 -> digitsOnly.substring(0, 10)
+            digitsOnly.length == 10 -> "(${digitsOnly.substring(0,3)}) ${digitsOnly.substring(3,6)}-${digitsOnly.substring(6)}"
+            digitsOnly.length > 6 -> "(${digitsOnly.substring(0,3)}) ${digitsOnly.substring(3,6)}-${digitsOnly.substring(6)}"
+            digitsOnly.length > 3 -> "(${digitsOnly.substring(0,3)}) ${digitsOnly.substring(3)}"
+            digitsOnly.isNotEmpty() -> "(${digitsOnly}"
+            else -> ""
+        }
     }
 
     LaunchedEffect(state.isSuccess) {
@@ -96,16 +122,17 @@ fun PrayerRequestScreen(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Name") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
-                    singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
+                        onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                    ),
+                    singleLine = true
                 )
 
                 // Email Field
@@ -115,34 +142,54 @@ fun PrayerRequestScreen(
                         email = it
                         emailError = if (it.isNotEmpty() && !isValidEmail(it)) {
                             "Please enter a valid email address"
-                        } else {
-                            null
-                        }
+                        } else null
                     },
                     label = { Text("Email") },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
-                    singleLine = true,
-                    isError = emailError != null,
-                    supportingText = {
-                        emailError?.let {
-                            Text(
-                                text = it,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    )
+                        onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                    ),
+                    isError = emailError != null,
+                    supportingText = { emailError?.let { Text(it) } },
+                    singleLine = true
                 )
 
-                // Request Field
+                // Phone Field
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { input -> 
+                        val formatted = formatPhoneNumber(input)
+                        phone = formatted
+                        phoneError = if (formatted.isNotEmpty() && !isValidPhone(formatted)) {
+                            "Please enter a valid phone number"
+                        } else null
+                    },
+                    label = { Text("Phone (Optional)") },
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = "Phone") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                    ),
+                    isError = phoneError != null,
+                    supportingText = { phoneError?.let { Text(it) } },
+                    singleLine = true,
+                    placeholder = { Text("(123) 456-7890") }
+                )
+
+                // Prayer Request Field
                 OutlinedTextField(
                     value = request,
                     onValueChange = { request = it },
@@ -150,81 +197,55 @@ fun PrayerRequestScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
-                    maxLines = 5
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { focusManager.clearFocus() }
+                    )
                 )
-
-                // Request Type
-                Text(
-                    text = "Request Type",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                
-                val requestTypes = listOf("Personal", "Family", "Health", "Other")
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2), 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp), 
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    userScrollEnabled = false 
-                ) {
-                    items(requestTypes) { type ->
-                        FilterChip(
-                            selected = selectedType == type,
-                            onClick = { selectedType = type },
-                            label = { Text(type) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
 
                 // Private Switch
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Keep request private",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
                     Switch(
                         checked = isPrivate,
                         onCheckedChange = { isPrivate = it }
+                    )
+                    Text(
+                        text = "Keep my request private",
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
 
                 // Submit Button
                 Button(
                     onClick = {
-                        if (email.isEmpty() || !isValidEmail(email)) {
-                            emailError = "Please enter a valid email address"
+                        if (name.isBlank()) {
+                            showError = true
                             return@Button
                         }
-                        focusManager.clearFocus()
+                        if (email.isNotEmpty() && !isValidEmail(email)) {
+                            return@Button
+                        }
                         viewModel.submitPrayerRequest(
                             name = name,
                             email = email,
+                            phone = phone,
                             request = request,
-                            isPrivate = isPrivate,
-                            requestType = selectedType
+                            isPrivate = isPrivate
                         )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    enabled = name.isNotBlank() && email.isNotBlank() && request.isNotBlank() && emailError == null && !state.isLoading
+                        .padding(top = 16.dp)
                 ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text("Submit Request")
-                    }
+                    Text("Submit")
                 }
             }
         }
@@ -235,7 +256,7 @@ fun PrayerRequestScreen(
         AlertDialog(
             onDismissRequest = { showError = false },
             title = { Text("Error") },
-            text = { Text(state.error ?: "An unknown error occurred") },
+            text = { Text(state.error ?: "Please fill in all required fields.") },
             confirmButton = {
                 TextButton(onClick = { showError = false }) {
                     Text("OK")
@@ -247,16 +268,16 @@ fun PrayerRequestScreen(
     // Success Dialog
     if (showSuccess) {
         AlertDialog(
-            onDismissRequest = { 
+            onDismissRequest = {
                 showSuccess = false
                 viewModel.resetState()
                 onDismiss()
             },
             title = { Text("Success") },
-            text = { Text("Your prayer request has been submitted. We will be praying for you.") },
+            text = { Text("Your prayer request has been submitted.") },
             confirmButton = {
                 TextButton(
-                    onClick = { 
+                    onClick = {
                         showSuccess = false
                         viewModel.resetState()
                         onDismiss()

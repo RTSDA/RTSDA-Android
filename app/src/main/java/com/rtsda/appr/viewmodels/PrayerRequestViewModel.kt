@@ -3,17 +3,16 @@ package com.rtsda.appr.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import timber.log.Timber
-import java.util.Date
-import java.util.UUID
 import javax.inject.Inject
+import com.rtsda.appr.data.model.PrayerRequest
+import com.rtsda.appr.data.model.RequestStatus
+import com.rtsda.appr.service.PrayerRequestService
 
 data class PrayerRequestState(
     val isLoading: Boolean = false,
@@ -22,54 +21,47 @@ data class PrayerRequestState(
 )
 
 @HiltViewModel
-class PrayerRequestViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore
-) : ViewModel() {
+class PrayerRequestViewModel @Inject constructor() : ViewModel() {
 
+    private val service = PrayerRequestService.getInstance()
     private val _state = MutableStateFlow(PrayerRequestState())
     val state: StateFlow<PrayerRequestState> = _state.asStateFlow()
 
     fun submitPrayerRequest(
         name: String,
         email: String,
+        phone: String,
         request: String,
-        isPrivate: Boolean,
-        requestType: String
+        isPrivate: Boolean = false
     ) {
         viewModelScope.launch {
             try {
                 _state.value = PrayerRequestState(isLoading = true)
                 
-                val docId = UUID.randomUUID().toString()
-                val prayerRequest = hashMapOf(
-                    "name" to name,
-                    "email" to email,
-                    "details" to request,
-                    "isConfidential" to isPrivate,
-                    "requestType" to requestType,
-                    "timestamp" to Timestamp(Date()),
-                    "prayedFor" to false
+                val prayerRequest = PrayerRequest(
+                    name = name,
+                    email = email,
+                    phone = phone,
+                    request = request,
+                    timestamp = Timestamp.now(),
+                    status = RequestStatus.NEW,
+                    isPrivate = isPrivate
                 )
-
-                // Use the same collection name and field names as iOS
-                firestore.collection("prayerRequests")
-                    .document(docId)
-                    .set(prayerRequest)
-                    .await()
-
-                _state.value = PrayerRequestState(isSuccess = true)
+                
+                val success = service.submitRequest(prayerRequest)
+                
+                _state.value = if (success) {
+                    PrayerRequestState(isSuccess = true)
+                } else {
+                    PrayerRequestState(error = "Failed to submit prayer request")
+                }
             } catch (e: Exception) {
                 Timber.e(e, "Error submitting prayer request")
-                val errorMessage = when {
-                    e.message?.contains("permission") == true -> "Permission denied. Please try again later."
-                    e.message?.contains("network") == true -> "Network error. Please check your connection."
-                    else -> "Error submitting prayer request. Please try again."
-                }
-                _state.value = PrayerRequestState(error = errorMessage)
+                _state.value = PrayerRequestState(error = e.message ?: "Unknown error occurred")
             }
         }
     }
-
+    
     fun resetState() {
         _state.value = PrayerRequestState()
     }

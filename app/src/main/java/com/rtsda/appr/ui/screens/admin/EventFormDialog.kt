@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.google.firebase.Timestamp
 import com.rtsda.appr.data.model.CalendarEvent
 import com.rtsda.appr.data.model.RecurrenceType
 import java.text.SimpleDateFormat
@@ -22,12 +23,12 @@ fun EventFormDialog(
     onDismiss: () -> Unit,
     onSave: (CalendarEvent) -> Unit
 ) {
-    var title by remember { mutableStateOf(event?.title ?: "") }
-    var description by remember { mutableStateOf(event?.description ?: "") }
-    var location by remember { mutableStateOf(event?.location ?: "") }
-    var startDate by remember { mutableStateOf(if (event?.startDate != null) Date((event.startDate * 1000).toLong()) else Date()) }
-    var endDate by remember { mutableStateOf(if (event?.endDate != null) Date((event.endDate * 1000).toLong()) else Date()) }
-    var recurrenceType by remember { mutableStateOf(event?.recurrenceType ?: RecurrenceType.NONE) }
+    var title by remember(event) { mutableStateOf(event?.title ?: "") }
+    var description by remember(event) { mutableStateOf(event?.description ?: "") }
+    var location by remember(event) { mutableStateOf(event?.location ?: "") }
+    var startDate by remember(event) { mutableStateOf(event?.startDate?.toDate() ?: Date()) }
+    var endDate by remember(event) { mutableStateOf(event?.endDate?.toDate() ?: Date(startDate.time + 3600000)) }
+    var recurrenceType by remember(event) { mutableStateOf(event?.recurrenceType ?: RecurrenceType.NONE) }
     var showRecurrenceMenu by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
@@ -184,8 +185,8 @@ fun EventFormDialog(
                         title = title,
                         description = description,
                         location = location,
-                        startDate = startDate.time / 1000.0,
-                        endDate = endDate.time / 1000.0,
+                        startDate = Timestamp(startDate.time / 1000, 0),
+                        endDate = Timestamp(endDate.time / 1000, 0),
                         recurrenceType = recurrenceType
                     )
                     onSave(newEvent)

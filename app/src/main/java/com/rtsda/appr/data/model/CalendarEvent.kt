@@ -6,6 +6,7 @@ import java.util.Date
 
 enum class RecurrenceType {
     NONE,
+    DAILY,
     WEEKLY,
     BIWEEKLY,
     MONTHLY,
@@ -24,6 +25,7 @@ enum class RecurrenceType {
     fun toDisplayString(): String {
         return when (this) {
             NONE -> "One-time"
+            DAILY -> "Daily"
             WEEKLY -> "Weekly"
             BIWEEKLY -> "Bi-weekly"
             MONTHLY -> "Monthly"
@@ -37,26 +39,48 @@ data class CalendarEvent(
     val title: String = "",
     val description: String = "",
     val location: String = "",
-    val startDate: Double = Date().time / 1000.0, // TimeInterval (seconds since 1970)
-    val endDate: Double = Date().time / 1000.0,   // TimeInterval (seconds since 1970)
+    val startDate: Timestamp = Timestamp.now(),
+    val endDate: Timestamp = Timestamp.now(),
     val recurrenceType: RecurrenceType = RecurrenceType.NONE,
     val parentEventId: String? = null
 ) {
+    // Convert Timestamp to Date for easier use in UI
+    val startDateTime: Date
+        get() = startDate.toDate()
+    
+    val endDateTime: Date
+        get() = endDate.toDate()
+
     companion object {
         fun fromDocument(document: DocumentSnapshot): CalendarEvent? {
             return try {
                 val data = document.data ?: return null
+                
+                // Handle both Timestamp and Double formats for dates
+                val startDate = when (val startValue = data["startDate"]) {
+                    is Timestamp -> startValue
+                    is Double -> Timestamp(startValue.toLong(), 0)
+                    else -> Timestamp.now()
+                }
+                
+                val endDate = when (val endValue = data["endDate"]) {
+                    is Timestamp -> endValue
+                    is Double -> Timestamp(endValue.toLong(), 0)
+                    else -> Timestamp.now()
+                }
+                
                 CalendarEvent(
                     id = document.id,
                     title = data["title"] as? String ?: "",
                     description = data["description"] as? String ?: "",
                     location = data["location"] as? String ?: "",
-                    startDate = (data["startDate"] as? Double) ?: Date().time / 1000.0,
-                    endDate = (data["endDate"] as? Double) ?: Date().time / 1000.0,
+                    startDate = startDate,
+                    endDate = endDate,
                     recurrenceType = RecurrenceType.fromString(data["recurrenceType"] as? String),
                     parentEventId = data["parentEventId"] as? String
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 null
             }
         }
@@ -74,9 +98,39 @@ data class CalendarEvent(
         )
     }
 
-    val startDateTime: Date
-        get() = Date((startDate * 1000).toLong())
-
-    val endDateTime: Date
-        get() = Date((endDate * 1000).toLong())
+    fun getNextOccurrence(): CalendarEvent {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.time = startDate.toDate()
+        
+        when (recurrenceType) {
+            RecurrenceType.DAILY -> calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            RecurrenceType.WEEKLY -> calendar.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+            RecurrenceType.BIWEEKLY -> calendar.add(java.util.Calendar.WEEK_OF_YEAR, 2)
+            RecurrenceType.MONTHLY -> calendar.add(java.util.Calendar.MONTH, 1)
+            RecurrenceType.FIRST_TUESDAY -> {
+                // Move to next month
+                calendar.add(java.util.Calendar.MONTH, 1)
+                // Set to first day of month
+                calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+                // Find first Tuesday
+                while (calendar.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.TUESDAY) {
+                    calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
+                }
+            }
+            RecurrenceType.NONE -> return this
+        }
+        
+        // Calculate the time difference between start and end dates
+        val duration = endDate.seconds - startDate.seconds
+        
+        // Create new timestamps
+        val newStartDate = Timestamp(calendar.time)
+        val newEndDate = Timestamp(newStartDate.seconds + duration, newStartDate.nanoseconds)
+        
+        return copy(
+            startDate = newStartDate,
+            endDate = newEndDate,
+            parentEventId = id // Preserve the parent event ID for recurring instances
+        )
+    }
 }
