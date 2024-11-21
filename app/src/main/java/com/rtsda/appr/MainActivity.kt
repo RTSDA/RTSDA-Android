@@ -27,12 +27,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.rtsda.appr.navigation.NavigationItem
 import com.rtsda.appr.navigation.bottomNavItems
 import com.rtsda.appr.ui.screens.*
 import com.rtsda.appr.ui.screens.admin.*
-import com.rtsda.appr.ui.screens.admin.AdminEventViewModel
+import com.rtsda.appr.ui.viewmodels.AdminEventViewModel
 import com.rtsda.appr.ui.theme.RTSDATheme
 import dagger.hilt.android.AndroidEntryPoint
 

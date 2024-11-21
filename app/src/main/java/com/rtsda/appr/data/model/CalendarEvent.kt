@@ -42,7 +42,9 @@ data class CalendarEvent(
     val startDate: Timestamp = Timestamp.now(),
     val endDate: Timestamp = Timestamp.now(),
     val recurrenceType: RecurrenceType = RecurrenceType.NONE,
-    val parentEventId: String? = null
+    val parentEventId: String? = null,
+    val isPublished: Boolean = false,
+    val updatedAt: Timestamp = Timestamp.now()
 ) {
     // Convert Timestamp to Date for easier use in UI
     val startDateTime: Date
@@ -69,6 +71,12 @@ data class CalendarEvent(
                     else -> Timestamp.now()
                 }
                 
+                val updatedAt = when (val updateValue = data["updatedAt"]) {
+                    is Timestamp -> updateValue
+                    is Double -> Timestamp(updateValue.toLong(), 0)
+                    else -> Timestamp.now()
+                }
+                
                 CalendarEvent(
                     id = document.id,
                     title = data["title"] as? String ?: "",
@@ -77,7 +85,9 @@ data class CalendarEvent(
                     startDate = startDate,
                     endDate = endDate,
                     recurrenceType = RecurrenceType.fromString(data["recurrenceType"] as? String),
-                    parentEventId = data["parentEventId"] as? String
+                    parentEventId = data["parentEventId"] as? String,
+                    isPublished = data["isPublished"] as? Boolean ?: false,
+                    updatedAt = updatedAt
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -94,7 +104,9 @@ data class CalendarEvent(
             "startDate" to startDate,
             "endDate" to endDate,
             "recurrenceType" to recurrenceType.name,
-            "parentEventId" to (parentEventId ?: "")
+            "parentEventId" to (parentEventId ?: ""),
+            "isPublished" to isPublished,
+            "updatedAt" to updatedAt
         )
     }
 

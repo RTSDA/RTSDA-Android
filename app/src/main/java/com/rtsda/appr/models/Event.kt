@@ -20,7 +20,13 @@ data class Event(
     @get:PropertyName("recurrenceType")
     @set:PropertyName("recurrenceType")
     var recurrenceType: String = "NONE",
-    val parentEventId: String? = null
+    val parentEventId: String? = null,
+    @get:PropertyName("isPublished")
+    @set:PropertyName("isPublished")
+    var isPublished: Boolean = false,
+    @get:PropertyName("updatedAt")
+    @set:PropertyName("updatedAt")
+    var updatedAt: Timestamp = Timestamp.now()
 ) {
     companion object {
         fun fromDocument(document: DocumentSnapshot): Event? {
@@ -41,6 +47,13 @@ data class Event(
                     else -> null
                 }
                 
+                val updatedAt = when (val updateVal = data["updatedAt"]) {
+                    is Timestamp -> updateVal
+                    is Double -> Timestamp(updateVal.toLong(), 0)
+                    is Long -> Timestamp(updateVal, 0)
+                    else -> Timestamp.now()
+                }
+                
                 Event(
                     id = document.id,
                     title = data["title"] as? String ?: "",
@@ -50,7 +63,9 @@ data class Event(
                     location = data["location"] as? String ?: "",
                     locationUrl = data["locationUrl"] as? String,
                     recurrenceType = (data["recurrenceType"] as? String ?: "NONE").uppercase(),
-                    parentEventId = data["parentEventId"] as? String
+                    parentEventId = data["parentEventId"] as? String,
+                    isPublished = data["isPublished"] as? Boolean ?: false,
+                    updatedAt = updatedAt
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -68,7 +83,9 @@ data class Event(
             "location" to location,
             "locationUrl" to locationUrl,
             "recurrenceType" to recurrenceType,
-            "parentEventId" to parentEventId
+            "parentEventId" to parentEventId,
+            "isPublished" to isPublished,
+            "updatedAt" to updatedAt
         )
     }
 

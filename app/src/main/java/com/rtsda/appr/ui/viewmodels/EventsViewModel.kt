@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import com.rtsda.appr.data.model.CalendarEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,11 @@ class EventsViewModel @Inject constructor(
     }
 
     private fun setupEventsListener() {
+        eventsListener?.remove()
+        
         eventsListener = db.collection("events")
+            .whereEqualTo("isPublished", true)
+            .orderBy("startDate", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "Error fetching events")
@@ -40,9 +45,18 @@ class EventsViewModel @Inject constructor(
                 }
 
                 snapshot?.let { querySnapshot ->
-                    _events.value = querySnapshot.documents.mapNotNull { doc ->
-                        CalendarEvent.fromDocument(doc)
-                    }.sortedBy { it.startDate }
+                    val events = querySnapshot.documents.mapNotNull { doc ->
+                        try {
+                            CalendarEvent.fromDocument(doc)?.also { event ->
+                                Timber.d("Event ${event.id}: published=${event.isPublished}")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error parsing event ${doc.id}")
+                            null
+                        }
+                    }
+                    Timber.d("Fetched ${events.size} events")
+                    _events.value = events.sortedBy { it.startDate }
                 }
             }
     }
@@ -51,10 +65,24 @@ class EventsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _isLoading.value = true
-                val snapshot = db.collection("events").get().await()
-                _events.value = snapshot.documents.mapNotNull { doc ->
-                    CalendarEvent.fromDocument(doc)
-                }.sortedBy { it.startDate }
+                val snapshot = db.collection("events")
+                    .whereEqualTo("isPublished", true)
+                    .orderBy("startDate", Query.Direction.ASCENDING)
+                    .get()
+                    .await()
+
+                val events = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        CalendarEvent.fromDocument(doc)?.also { event ->
+                            Timber.d("Event ${event.id}: published=${event.isPublished}")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error parsing event ${doc.id}")
+                        null
+                    }
+                }
+                Timber.d("Fetched ${events.size} events")
+                _events.value = events.sortedBy { it.startDate }
             } catch (e: Exception) {
                 Timber.e(e, "Error fetching events")
             } finally {

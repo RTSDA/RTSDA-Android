@@ -3,6 +3,8 @@ package com.rtsda.appr.ui.screens.admin
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -13,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.rtsda.appr.data.model.CalendarEvent
-import com.rtsda.appr.ui.screens.admin.AdminEventViewModel
+import com.rtsda.appr.ui.viewmodels.AdminEventViewModel
 
 @Composable
 fun AdminEventFormView(
@@ -21,6 +23,8 @@ fun AdminEventFormView(
     onDismiss: () -> Unit,
     eventId: String? = null
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     // If editing, load the event
     LaunchedEffect(eventId) {
         if (eventId != null) {
@@ -53,9 +57,9 @@ fun AdminEventFormView(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                if (viewModel.error != null) {
+                if (uiState.error != null) {
                     Text(
-                        text = viewModel.error ?: "",
+                        text = uiState.error ?: "",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -63,7 +67,7 @@ fun AdminEventFormView(
                 }
                 
                 EventFormDialog(
-                    event = viewModel.eventToEdit,
+                    event = uiState.eventToEdit,
                     onDismiss = {
                         viewModel.clearCache()
                         onDismiss()
