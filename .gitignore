@@ -1,0 +1,37 @@
+*.iml
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/.externalNativeBuild
+.cxx
+/captures
+
+# Secrets and Configuration
+secrets.properties
+/app/google-services.json
+local.properties
+.env
+
+# Keep example files
+!secrets.example.properties
+!app/google-services.example.json
+
+# Firebase
+.firebaserc
+firebase-debug.log
+
+# IDE
+/.idea/deploymentTargetDropDown.xml
+/.idea/misc.xml
+/.idea/kotlinc.xml
+/.idea/gradle.xml
+/.idea/compiler.xml
+
+# Gradle
+.gradle/
+build/
+**/build/
