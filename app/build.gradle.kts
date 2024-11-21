@@ -25,9 +25,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("release.keystore")
-            storePassword = "SaviourofMyLife!!"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
             keyAlias = "rtsda"
-            keyPassword = "SaviourofMyLife!!"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 

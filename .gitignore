@@ -12,9 +12,11 @@
 
 # Secrets and Configuration
 secrets.properties
+secrets.defaults.properties
 /app/google-services.json
 local.properties
 .env
+release.keystore
 
 # Keep example files
 !secrets.example.properties
