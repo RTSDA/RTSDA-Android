@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="org.rtsda.android.presentation.home.HomeFragment"
+        android:label="@string/title_home"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/navigation_bulletins"
+        android:name="org.rtsda.android.ui.bulletins.BulletinsFragment"
+        android:label="@string/title_bulletins"
+        tools:layout="@layout/fragment_bulletins" />
+
+    <fragment
+        android:id="@+id/navigation_events"
+        android:name="org.rtsda.android.presentation.events.EventsFragment"
+        android:label="@string/title_events"
+        tools:layout="@layout/fragment_events" />
+
+    <fragment
+        android:id="@+id/navigation_messages"
+        android:name="org.rtsda.android.presentation.messages.MessagesFragment"
+        android:label="@string/title_messages"
+        tools:layout="@layout/fragment_messages" />
+
+    <fragment
+        android:id="@+id/navigation_more"
+        android:name="org.rtsda.android.presentation.more.MoreFragment"
+        android:label="@string/title_more"
+        tools:layout="@layout/fragment_more" />
+
+    <fragment
+        android:id="@+id/navigation_bulletin_detail"
+        android:name="org.rtsda.android.ui.bulletins.BulletinDetailFragment"
+        android:label="Bulletin Detail"
+        tools:layout="@layout/fragment_bulletin_detail">
+        <argument
+            android:name="bulletinId"
+            app:argType="string" />
+    </fragment>
+
+</navigation> 

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RTSDA</string>
+    
+    <!-- Navigation -->
+    <string name="title_home">Home</string>
+    <string name="title_bulletins">Bulletins</string>
+    <string name="title_events">Events</string>
+    <string name="title_messages">Messages</string>
+    <string name="title_more">More</string>
+    <string name="title_event_detail">Event Detail</string>
+    <string name="title_bulletin_detail">Bulletin Detail</string>
+    <string name="title_message_detail">Message Detail</string>
+    <string name="title_live">Live</string>
+    <string name="title_beliefs">Beliefs</string>
+    <string name="title_contact">Contact Us</string>
+    
+    <!-- Common -->
+    <string name="retry">Retry</string>
+    <string name="error_loading">Error loading content</string>
+    <string name="no_data">No data available</string>
+    <string name="loading">Loading...</string>
+    <string name="error_loading_data">Failed to load data. Please check your connection and try again.</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_download">Download</string>
+    <string name="action_play">Play</string>
+    <string name="content_description_message_thumbnail">Message thumbnail</string>
+    <string name="error_playback_title">Playback Error</string>
+    <string name="error_playback_message">An error occurred while playing the video</string>
+    <string name="ok">OK</string>
+    
+    <!-- Events -->
+    <string name="event_start_date">Start: %1$s</string>
+    <string name="event_end_date">End: %1$s</string>
+    <string name="event_location">Location: %1$s</string>
+    
+    <!-- Bulletins -->
+    <string name="bulletin_date">Date: %1$s</string>
+    <string name="bulletin_download">Download</string>
+    <string name="divine_worship">Divine Worship</string>
+    <string name="sabbath_school">Sabbath School</string>
+    <string name="scripture_reading">Scripture Reading</string>
+    <string name="sunset_times">Sunset Times</string>
+    
+    <!-- Messages -->
+    <string name="message_date">Date: %1$s</string>
+    <string name="message_speaker">Speaker: %1$s</string>
+    
+    <!-- Live -->
+    <string name="live_offline">Stream is offline</string>
+    <string name="live_connecting">Connecting…</string>
+    <string name="live_error">Error connecting to stream</string>
+    
+    <!-- Contact -->
+    <string name="contact_name">Name</string>
+    <string name="contact_email">Email</string>
+    <string name="contact_subject">Subject</string>
+    <string name="contact_message">Message</string>
+    <string name="contact_send">Send</string>
+    <string name="contact_success">Message sent successfully</string>
+    <string name="contact_error">Error sending message</string>
+    
+    <!-- Cast -->
+    <string name="cast_app_id">[REPLACE_WITH_YOUR_CAST_APP_ID]</string>
+    
+    <!-- Default Bible Verse -->
+    <string name="default_bible_verse">For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.</string>
+    <string name="default_bible_reference">John 3:16</string>
+    
+    <!-- Events feature -->
+    <string name="no_upcoming_events">No upcoming events</string>
+    <string name="error_loading_events">Unable to load events</string>
+    
+    <!-- New string resource for event image content description -->
+    <string name="event_image">Event image</string>
+    
+    <!-- New string resource for "Add to Calendar" button text -->
+    <string name="add_to_calendar">Add to Calendar</string>
+    
+    <!-- New string resource for event date and time format -->
+    <string name="event_date_time_format">%1$s at %2$s</string>
+    
+    <!-- New string resource for error adding to calendar -->
+    <string name="error_adding_to_calendar">Could not add event to calendar</string>
+    
+    <!-- New string resource for error opening location -->
+    <string name="error_opening_location">Could not open location</string>
+    
+    <!-- New string resource for "Open in Maps" button text -->
+    <string name="open_in_maps">Open in Maps</string>
+    
+    <!-- New string resource for PDF availability -->
+    <string name="pdf_available">PDF Available</string>
+    
+    <!-- New string resource for no bulletins available -->
+    <string name="no_bulletins">No Bulletins Available</string>
+    
+    <!-- New string resource for no bulletins message -->
+    <string name="no_bulletins_message">Check back later for bulletins.</string>
+    
+    <!-- New string resource for error loading bulletins -->
+    <string name="error_loading_bulletins">Error loading bulletins</string>
+    
+    <!-- New string resource for refresh action -->
+    <string name="refresh">Refresh</string>
+    
+    <!-- New string resource for first name -->
+    <string name="first_name">First Name</string>
+    
+    <!-- New string resource for last name -->
+    <string name="last_name">Last Name</string>
+    
+    <!-- New string resource for email -->
+    <string name="email">Email</string>
+    
+    <!-- New string resource for phone -->
+    <string name="phone">Phone (optional)</string>
+    
+    <!-- New string resource for submit -->
+    <string name="submit">Submit</string>
+    
+    <!-- New string resource for success title -->
+    <string name="success_title">Success</string>
+    
+    <!-- New string resource for success message -->
+    <string name="success_message">Thank you for your message! We\'ll get back to you soon.</string>
+    
+    <!-- New string resource for error required -->
+    <string name="error_required">%1$s is required</string>
+    
+    <!-- New string resource for error invalid email -->
+    <string name="error_invalid_email">Please enter a valid email address</string>
+    
+    <!-- New string resource for error invalid phone -->
+    <string name="error_invalid_phone">Please enter a valid phone number</string>
+    
+    <!-- New string resource for error title -->
+    <string name="error_title">Error</string>
+    
+    <!-- New string resource for error message -->
+    <string name="error_message">Failed to send message. Please try again later.</string>
+    
+    <!-- New string resource for message -->
+    <string name="message">Message</string>
+    
+    <!-- New string resource for filter -->
+    <string name="filter">Filter</string>
+    <string name="filter_content">Filter Content</string>
+    <string name="sermons">Sermons</string>
+    <string name="live_archives">Live Archives</string>
+    <string name="live">LIVE</string>
+    <string name="video_thumbnail">Video thumbnail</string>
+    <string name="thumbnail">Thumbnail image</string>
+    <string name="filter_messages">Filter Messages</string>
+    <string name="content_type">Content Type</string>
+    <string name="year">Year</string>
+    <string name="month">Month</string>
+    <string name="back">Back</string>
+    <string name="bulletins">Bulletins</string>
+    <string name="open">Open</string>
+    <string name="download_pdf">Download PDF</string>
+</resources> 

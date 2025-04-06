@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="org.rtsda.android.ui.home.HomeFragment"
+        android:label="@string/title_home">
+        <action
+            android:id="@+id/action_navigation_home_to_contactFragment"
+            app:destination="@id/contactFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_bulletins"
+        android:name="org.rtsda.android.ui.bulletins.BulletinsFragment"
+        android:label="@string/title_bulletins">
+        <action
+            android:id="@+id/action_bulletins_to_bulletin_detail"
+            app:destination="@id/navigation_bulletin_detail" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_bulletin_detail"
+        android:name="org.rtsda.android.ui.bulletins.BulletinDetailFragment"
+        android:label="@string/title_bulletin_detail">
+        <argument
+            android:name="bulletinId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/eventsFragment"
+        android:name="org.rtsda.android.presentation.events.EventsFragment"
+        android:label="Events">
+        <action
+            android:id="@+id/action_eventsFragment_to_eventDetailFragment"
+            app:destination="@id/eventDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/eventDetailFragment"
+        android:name="org.rtsda.android.presentation.events.EventDetailFragment"
+        android:label="Event Details">
+        <argument
+            android:name="event"
+            app:argType="org.rtsda.android.data.model.Event" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/messagesFragment"
+        android:name="org.rtsda.android.presentation.messages.MessagesFragment"
+        android:label="@string/title_messages"
+        tools:layout="@layout/fragment_messages">
+        <action
+            android:id="@+id/action_messagesFragment_to_videoPlayerFragment"
+            app:destination="@id/videoPlayerActivity" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_message_detail"
+        android:name="org.rtsda.android.ui.messages.MessageDetailFragment"
+        android:label="@string/title_message_detail">
+        <argument
+            android:name="messageId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_more"
+        android:name="org.rtsda.android.ui.more.MoreFragment"
+        android:label="@string/title_more">
+        <action
+            android:id="@+id/action_moreFragment_to_contactFragment"
+            app:destination="@id/contactFragment" />
+        <action
+            android:id="@+id/action_moreFragment_to_beliefsFragment"
+            app:destination="@id/beliefsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/contactFragment"
+        android:name="org.rtsda.android.ui.contact.ContactFragment"
+        android:label="@string/title_contact" />
+
+    <fragment
+        android:id="@+id/beliefsFragment"
+        android:name="org.rtsda.android.ui.beliefs.BeliefsFragment"
+        android:label="@string/title_beliefs" />
+
+    <activity
+        android:id="@+id/videoPlayerActivity"
+        android:name="org.rtsda.android.presentation.video.VideoPlayerActivity"
+        android:label="Video Player"
+        android:theme="@style/Theme.RTSDA.NoActionBar">
+        <argument
+            android:name="videoUrl"
+            app:argType="string" />
+    </activity>
+
+</navigation> 
