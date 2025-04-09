@@ -7,12 +7,10 @@ import dagger.hilt.components.SingletonComponent
 import org.rtsda.android.data.repository.BulletinRepositoryImpl
 import org.rtsda.android.data.repository.EventRepository
 import org.rtsda.android.data.repository.EventRepositoryImpl
-import org.rtsda.android.data.repository.MessageRepository
-import org.rtsda.android.data.repository.MessageRepositoryImpl
 import org.rtsda.android.data.repository.VersesRepository
 import org.rtsda.android.data.repository.VersesRepositoryImpl
-import org.rtsda.android.data.MessagesRepository
-import org.rtsda.android.data.MessagesRepositoryImpl
+import org.rtsda.android.data.repository.MessagesRepositoryImpl
+import org.rtsda.android.domain.repository.MessagesRepository
 import org.rtsda.android.domain.repository.BulletinRepository
 import javax.inject.Singleton
 
@@ -37,12 +35,6 @@ abstract class RepositoryModule {
     abstract fun bindEventRepository(
         eventRepositoryImpl: EventRepositoryImpl
     ): EventRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindMessageRepository(
-        messageRepositoryImpl: MessageRepositoryImpl
-    ): MessageRepository
 
     @Binds
     @Singleton

@@ -14,7 +14,7 @@ class BulletinRepositoryImpl @Inject constructor(
 ) : BulletinRepository {
 
     override suspend fun getBulletins(): List<Bulletin> {
-        val response = api.getBulletins()
+        val response = api.getBulletins("is_active=true")
         return if (response.isSuccessful && response.body() != null) {
             response.body()!!.items.map { it.toDomainModel() }
         } else {

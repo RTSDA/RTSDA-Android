@@ -17,7 +17,7 @@ import org.rtsda.android.data.model.BibleVerse
 import org.rtsda.android.data.model.VersesRecord
 import org.rtsda.android.data.service.BibleService
 import org.rtsda.android.databinding.ActivitySplashBinding
-import org.rtsda.android.presentation.main.MainActivity
+import org.rtsda.android.MainActivity
 import javax.inject.Inject
 
 @AndroidEntryPoint

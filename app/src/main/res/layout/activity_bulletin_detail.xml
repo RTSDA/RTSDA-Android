@@ -3,22 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurfaceVariant">
+    android:background="@android:color/black">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        app:elevation="0dp">
+        android:background="@android:color/black">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorSurface"
+            android:background="@android:color/black"
             app:navigationIcon="@drawable/ic_arrow_back"
-            app:titleTextColor="?attr/colorOnSurface"
-            app:titleTextAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
+            app:titleTextColor="@android:color/white" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -27,7 +25,7 @@
         android:layout_height="match_parent"
         android:fillViewport="true"
         android:clipToPadding="false"
-        android:padding="4dp"
+        android:padding="16dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
@@ -35,54 +33,37 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:id="@+id/bulletinDateText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="1dp">
+                android:textColor="#808080"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:layout_marginBottom="4dp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="12dp">
+            <TextView
+                android:id="@+id/bulletinTitleText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="24dp" />
 
-                    <TextView
-                        android:id="@+id/bulletinDateText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="14sp"
-                        android:gravity="center"
-                        android:layout_marginBottom="2dp" />
-
-                    <TextView
-                        android:id="@+id/bulletinTitleText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="24sp"
-                        android:textStyle="bold"
-                        android:gravity="center"
-                        android:layout_marginBottom="8dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/downloadButton"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:text="Download PDF"
-                        android:backgroundTint="@color/teal_200"
-                        android:textColor="@color/black"
-                        app:icon="@drawable/ic_download"
-                        app:iconTint="@color/black"
-                        android:visibility="gone" />
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/downloadButton"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="32dp"
+                android:layout_marginBottom="24dp"
+                android:text="View PDF"
+                android:textColor="@android:color/white"
+                android:backgroundTint="#007AFF"
+                app:icon="@drawable/ic_download"
+                app:iconTint="@android:color/white" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/sectionsRecyclerView"
@@ -107,7 +88,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:textColor="@color/error"
-        android:textSize="16sp"
         android:visibility="gone" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout> 

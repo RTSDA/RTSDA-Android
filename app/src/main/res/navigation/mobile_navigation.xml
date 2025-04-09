@@ -9,31 +9,90 @@
         android:id="@+id/navigation_home"
         android:name="org.rtsda.android.presentation.home.HomeFragment"
         android:label="@string/title_home"
-        tools:layout="@layout/fragment_home" />
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_navigation_home_to_contactFragment"
+            app:destination="@id/contactFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_bulletins"
         android:name="org.rtsda.android.ui.bulletins.BulletinsFragment"
         android:label="@string/title_bulletins"
-        tools:layout="@layout/fragment_bulletins" />
+        tools:layout="@layout/fragment_bulletins">
+        <action
+            android:id="@+id/action_bulletins_to_bulletin_detail"
+            app:destination="@id/navigation_bulletin_detail" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_events"
         android:name="org.rtsda.android.presentation.events.EventsFragment"
         android:label="@string/title_events"
-        tools:layout="@layout/fragment_events" />
+        tools:layout="@layout/fragment_events">
+        <action
+            android:id="@+id/action_events_to_event_detail"
+            app:destination="@id/navigation_event_detail" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_event_detail"
+        android:name="org.rtsda.android.presentation.events.EventDetailFragment"
+        android:label="Event Details">
+        <argument
+            android:name="eventId"
+            app:argType="string" />
+        <argument
+            android:name="eventTitle"
+            app:argType="string" />
+        <argument
+            android:name="eventDescription"
+            app:argType="string" />
+        <argument
+            android:name="eventStartDate"
+            app:argType="long" />
+        <argument
+            android:name="eventEndDate"
+            app:argType="long" />
+        <argument
+            android:name="eventLocation"
+            app:argType="string" />
+        <argument
+            android:name="eventLocationUrl"
+            app:argType="string" />
+        <argument
+            android:name="eventImageUrl"
+            app:argType="string" />
+        <argument
+            android:name="eventCategory"
+            app:argType="string" />
+        <argument
+            android:name="eventRecurring"
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_messages"
         android:name="org.rtsda.android.presentation.messages.MessagesFragment"
         android:label="@string/title_messages"
-        tools:layout="@layout/fragment_messages" />
+        tools:layout="@layout/fragment_messages">
+        <action
+            android:id="@+id/action_messages_to_video_player"
+            app:destination="@id/videoPlayerActivity" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_more"
         android:name="org.rtsda.android.presentation.more.MoreFragment"
         android:label="@string/title_more"
-        tools:layout="@layout/fragment_more" />
+        tools:layout="@layout/fragment_more">
+        <action
+            android:id="@+id/action_more_to_contact"
+            app:destination="@id/contactFragment" />
+        <action
+            android:id="@+id/action_more_to_beliefs"
+            app:destination="@id/beliefsFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_bulletin_detail"
@@ -44,5 +103,25 @@
             android:name="bulletinId"
             app:argType="string" />
     </fragment>
+
+    <fragment
+        android:id="@+id/contactFragment"
+        android:name="org.rtsda.android.ui.contact.ContactFragment"
+        android:label="@string/title_contact" />
+
+    <fragment
+        android:id="@+id/beliefsFragment"
+        android:name="org.rtsda.android.ui.beliefs.BeliefsFragment"
+        android:label="@string/title_beliefs" />
+
+    <activity
+        android:id="@+id/videoPlayerActivity"
+        android:name="org.rtsda.android.presentation.video.VideoPlayerActivity"
+        android:label="Video Player"
+        android:theme="@style/Theme.RTSDA.NoActionBar">
+        <argument
+            android:name="videoUrl"
+            app:argType="string" />
+    </activity>
 
 </navigation> 

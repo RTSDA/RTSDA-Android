@@ -21,8 +21,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.rtsda.android.R
-import org.rtsda.android.data.MediaType
-import org.rtsda.android.data.model.Message
+import org.rtsda.android.domain.model.MediaType
+import org.rtsda.android.domain.model.Message
 import org.rtsda.android.databinding.DialogFilterBinding
 import org.rtsda.android.databinding.FragmentMessagesBinding
 import org.rtsda.android.viewmodels.MessagesViewModel
@@ -128,7 +128,7 @@ class MessagesFragment : Fragment() {
                         if (viewModel.shouldLaunchPlayer) {
                             val intent = Intent(requireContext(), VideoPlayerActivity::class.java).apply {
                                 putExtra(VideoPlayerActivity.EXTRA_VIDEO_URL, state.videoUrl)
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
                             }
                             startActivity(intent)
                             viewModel.onPlayerLaunched()

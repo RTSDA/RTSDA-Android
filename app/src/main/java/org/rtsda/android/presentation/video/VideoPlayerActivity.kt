@@ -1,12 +1,18 @@
 package org.rtsda.android.presentation.video
 
 import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.util.Rational
-import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.viewModels
@@ -16,11 +22,15 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerView
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import dagger.hilt.android.AndroidEntryPoint
+import org.rtsda.android.R
 import org.rtsda.android.databinding.ActivityVideoPlayerBinding
 import org.rtsda.android.viewmodels.MessagesViewModel
 import javax.inject.Inject
@@ -29,203 +39,156 @@ import javax.inject.Inject
 class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityVideoPlayerBinding
     private var player: ExoPlayer? = null
-    private var isInPiPMode = false
-    private var currentPosition: Long = 0
-    private var isPlaying = false
     private var videoUrl: String? = null
-    private var shouldResumePlayback = false
-    private var wasInPiPMode = false
-    private var mediaSource: HlsMediaSource? = null
-    private var isActivityStopped = false
-    private var surfaceDestroyed = false
+    private var playWhenReady: Boolean = true
+    private var currentPosition: Long = 0
     
     private val messagesViewModel: MessagesViewModel by viewModels()
     
     @Inject
     lateinit var httpDataSourceFactory: DefaultHttpDataSource.Factory
     
+    private val pipActionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ACTION_PLAY -> player?.play()
+                ACTION_PAUSE -> player?.pause()
+            }
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        android.util.Log.d("VideoPlayerActivity", "onCreate: isInPiPMode=$isInPiPMode, intent.flags=${intent.flags}")
-        
-        // If we're in PiP mode and this is a new instance, just finish
-        if (isInPiPMode && intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0) {
-            android.util.Log.d("VideoPlayerActivity", "Finishing duplicate PiP instance")
-            finish()
-            return
-        }
         
         binding = ActivityVideoPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // Restore state if available
-        if (savedInstanceState != null) {
-            currentPosition = savedInstanceState.getLong(KEY_POSITION)
-            isPlaying = savedInstanceState.getBoolean(KEY_IS_PLAYING)
-            videoUrl = savedInstanceState.getString(KEY_VIDEO_URL)
-            shouldResumePlayback = isPlaying
-            wasInPiPMode = savedInstanceState.getBoolean(KEY_WAS_IN_PIP)
-            android.util.Log.d("VideoPlayerActivity", "Restored state: position=$currentPosition, isPlaying=$isPlaying, videoUrl=$videoUrl, wasInPiPMode=$wasInPiPMode")
-        } else {
-            videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL)
-            shouldResumePlayback = true
-            android.util.Log.d("VideoPlayerActivity", "New instance: videoUrl=$videoUrl")
-        }
-        
+        // Get the video URL from either the intent or saved state
+        videoUrl = savedInstanceState?.getString(EXTRA_VIDEO_URL) ?: intent.getStringExtra(EXTRA_VIDEO_URL)
         if (videoUrl == null) {
-            android.util.Log.e("VideoPlayerActivity", "No video URL provided, finishing")
             finish()
             return
         }
         
-        // Hide system UI for immersive mode
         hideSystemUi()
-        
-        // Setup back button
-        binding.backButton.setOnClickListener {
-            android.util.Log.d("VideoPlayerActivity", "Back button clicked")
-            onBackPressedDispatcher.onBackPressed()
+        binding.backButton.setOnClickListener { 
+            finish()
         }
         
-        // Initialize player
-        initializePlayer(videoUrl!!)
-    }
-    
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        android.util.Log.d("VideoPlayerActivity", "onNewIntent: videoUrl=$videoUrl, newVideoUrl=${intent?.getStringExtra(EXTRA_VIDEO_URL)}")
-        
-        // Update video URL if provided
-        val newVideoUrl = intent?.getStringExtra(EXTRA_VIDEO_URL)
-        if (newVideoUrl != null) {
-            android.util.Log.d("VideoPlayerActivity", "Killing and restarting player")
-            
-            // Completely clean up
-            releasePlayer()
-            mediaSource = null
-            currentPosition = 0
-            isPlaying = false
-            shouldResumePlayback = true
-            
-            // Reset UI state
-            isInPiPMode = false
-            binding.playerView.useController = true
-            binding.playerView.showController()
-            binding.backButton.visibility = View.VISIBLE
-            
-            // Start fresh
-            videoUrl = newVideoUrl
-            initializePlayer(newVideoUrl)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(pipActionReceiver, IntentFilter().apply {
+                addAction(ACTION_PLAY)
+                addAction(ACTION_PAUSE)
+            }, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(pipActionReceiver, IntentFilter().apply {
+                addAction(ACTION_PLAY)
+                addAction(ACTION_PAUSE)
+            })
         }
+        
+        initializePlayer()
     }
     
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        player?.let {
-            outState.putLong(KEY_POSITION, it.currentPosition)
-            outState.putBoolean(KEY_IS_PLAYING, it.isPlaying)
+        outState.putString(EXTRA_VIDEO_URL, videoUrl)
+    }
+    
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        
+        // Get the new video URL
+        val newVideoUrl = intent?.getStringExtra(EXTRA_VIDEO_URL)
+        if (newVideoUrl == null) {
+            finish()
+            return
         }
-        outState.putString(KEY_VIDEO_URL, videoUrl)
-        outState.putBoolean(KEY_WAS_IN_PIP, isInPiPMode)
+        
+        // Reset playback state
+        playWhenReady = true
+        currentPosition = 0
+        
+        // If we're in PiP mode, close it first
+        if (isInPictureInPictureMode) {
+            // Release the current player
+            releasePlayer()
+            // Update the video URL
+            videoUrl = newVideoUrl
+            // Exit PiP mode first
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+                setPictureInPictureParams(params)
+                // Instead of moveTaskToBack, just finish the activity
+                finish()
+                // Start a new instance of the activity
+                val newIntent = Intent(this, VideoPlayerActivity::class.java).apply {
+                    putExtra(EXTRA_VIDEO_URL, newVideoUrl)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(newIntent)
+            }
+        } else {
+            // If not in PiP mode, just update the video
+            videoUrl = newVideoUrl
+            releasePlayer()
+            initializePlayer()
+        }
+    }
+    
+    override fun onStart() {
+        super.onStart()
+        if (!isInPictureInPictureMode) {
+            initializePlayer()
+        }
     }
     
     override fun onResume() {
         super.onResume()
-        isActivityStopped = false
-        
-        // Only initialize if we don't have a player
-        if (player == null) {
-            initializePlayer(videoUrl!!)
-        } else {
-            // Just reattach the player to the view
-            binding.playerView.player = player
+        if (!isInPictureInPictureMode) {
+            hideSystemUi()
+            initializePlayer()
         }
     }
     
     override fun onPause() {
         super.onPause()
-        if (!isInPiPMode) {
-            player?.let {
-                currentPosition = it.currentPosition
-                isPlaying = it.isPlaying
-                it.playWhenReady = false
-            }
+        if (!isInPictureInPictureMode) {
+            releasePlayer()
         }
     }
     
     override fun onStop() {
         super.onStop()
-        isActivityStopped = true
-        if (!isInPiPMode && !isChangingConfigurations) {
+        if (!isInPictureInPictureMode) {
             releasePlayer()
         }
     }
     
     override fun onDestroy() {
         super.onDestroy()
-        android.util.Log.d("VideoPlayerActivity", "onDestroy: isChangingConfigurations=$isChangingConfigurations, isInPiPMode=$isInPiPMode")
-        if (!isChangingConfigurations) {
+        if (!isInPictureInPictureMode) {
             releasePlayer()
-            // Always notify the ViewModel that the player is closed
-            android.util.Log.d("VideoPlayerActivity", "Notifying ViewModel of player closure")
             messagesViewModel.onPlayerClosed()
         }
-    }
-    
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPiPMode) {
-            enterPictureInPictureMode(PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .build())
-        }
+        unregisterReceiver(pipActionReceiver)
     }
     
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        isInPiPMode = isInPictureInPictureMode
+        binding.playerView.useController = !isInPictureInPictureMode
+        binding.backButton.visibility = if (isInPictureInPictureMode) View.GONE else View.VISIBLE
         
-        if (isInPictureInPictureMode) {
-            // Hide UI elements in PiP mode
-            binding.playerView.useController = false
-            binding.backButton.visibility = View.GONE
-            
-            // Save current state and ensure player is playing in PiP mode
-            player?.let {
-                currentPosition = it.currentPosition
-                isPlaying = it.isPlaying
-                it.playWhenReady = true
-            }
-        } else {
-            // Only restore full-screen UI if we're not in the background
-            if (!isActivityStopped) {
-                binding.playerView.useController = true
-                binding.playerView.showController()
-                binding.backButton.visibility = View.VISIBLE
-            }
-            
-            // Let the player handle the surface transition naturally
-            player?.let {
-                // Don't seek or change play state here - let the player handle it
-                // The surface will be reattached automatically by PlayerView
-            }
+        if (!isInPictureInPictureMode) {
+            // When exiting PiP mode, just restore the UI
+            hideSystemUi()
         }
-    }
-    
-    override fun onBackPressed() {
-        android.util.Log.d("VideoPlayerActivity", "onBackPressed: isInPiPMode=$isInPiPMode")
-        // Always notify the ViewModel that the player is closed
-        android.util.Log.d("VideoPlayerActivity", "Notifying ViewModel of player closure")
-        messagesViewModel.onPlayerClosed()
         
-        if (isInPiPMode) {
-            // If in PiP mode, just finish
-            android.util.Log.d("VideoPlayerActivity", "Finishing PiP mode")
-            finish()
-        } else {
-            // If not in PiP mode, go back to previous screen
-            android.util.Log.d("VideoPlayerActivity", "Going back to previous screen")
-            super.onBackPressed()
+        // Update the ViewModel with the current PiP state
+        if (player != null) {
+            messagesViewModel.updatePlaybackState(MessagesViewModel.PlaybackState.Playing(videoUrl!!, isInPictureInPictureMode))
         }
     }
     
@@ -235,59 +198,63 @@ class VideoPlayerActivity : AppCompatActivity() {
             controller.hide(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        
-        // Keep screen on while playing
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
     
-    private fun initializePlayer(videoUrl: String) {
-        // Create media source if not already created
-        if (mediaSource == null) {
-            mediaSource = HlsMediaSource.Factory(httpDataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(videoUrl))
-        }
-        
+    private fun initializePlayer() {
         if (player == null) {
             player = ExoPlayer.Builder(this)
                 .setLoadControl(
                     androidx.media3.exoplayer.DefaultLoadControl.Builder()
                         .setBufferDurationsMs(
-                            15000,  // Minimum buffer duration in milliseconds
-                            50000,  // Maximum buffer duration in milliseconds
-                            2500,   // Buffer duration for playback in milliseconds
-                            5000    // Buffer duration after rebuffering in milliseconds
+                            30000,  // Minimum buffer duration in milliseconds
+                            60000,  // Maximum buffer duration in milliseconds
+                            5000,   // Buffer duration for playback in milliseconds
+                            10000   // Buffer duration after rebuffering in milliseconds
                         )
+                        .setPrioritizeTimeOverSizeThresholds(true)
                         .build()
+                )
+                .setRenderersFactory(
+                    DefaultRenderersFactory(this)
+                        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                        .setMediaCodecSelector(MediaCodecSelector.DEFAULT)
                 )
                 .build()
                 .also { exoPlayer ->
                     binding.playerView.player = exoPlayer
+                    binding.playerView.controllerHideOnTouch = true
+                    binding.playerView.controllerAutoShow = true
+                    binding.playerView.setControllerVisibilityListener(object : PlayerView.ControllerVisibilityListener {
+                        override fun onVisibilityChanged(visibility: Int) {
+                            binding.pipButton.visibility = if (visibility == View.VISIBLE && 
+                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) View.VISIBLE else View.GONE
+                        }
+                    })
                     
-                    // Prepare player with existing media source
-                    exoPlayer.setMediaSource(mediaSource!!)
+                    binding.pipButton.setOnClickListener {
+                        enterPiPMode()
+                    }
+                    
+                    // Create a new MediaItem for the current video URL
+                    val mediaItem = MediaItem.fromUri(videoUrl!!)
+                    exoPlayer.setMediaItem(mediaItem)
+                    
+                    // Always start from the beginning
+                    exoPlayer.seekTo(0)
+                    exoPlayer.playWhenReady = true
                     exoPlayer.prepare()
                     
-                    // Add player listeners
                     exoPlayer.addListener(object : Player.Listener {
                         override fun onPlaybackStateChanged(playbackState: Int) {
-                            when (playbackState) {
-                                Player.STATE_BUFFERING -> {
-                                    binding.bufferingIndicator.visibility = View.VISIBLE
-                                }
-                                Player.STATE_READY -> {
-                                    binding.bufferingIndicator.visibility = View.GONE
-                                    if (currentPosition > 0) {
-                                        exoPlayer.seekTo(currentPosition)
-                                    }
-                                    if (shouldResumePlayback) {
-                                        exoPlayer.playWhenReady = true
-                                    }
-                                }
-                                Player.STATE_ENDED -> {
-                                    // Video playback has ended, close the player
-                                    finish()
-                                }
+                            if (playbackState == Player.STATE_ENDED) {
+                                finish()
                             }
+                        }
+                        
+                        override fun onPlayerError(error: PlaybackException) {
+                            Log.e("VideoPlayer", "Playback error: ${error.message}")
+                            finish()
                         }
                     })
                 }
@@ -295,19 +262,63 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
     
     private fun releasePlayer() {
-        player?.let {
-            it.stop()
-            it.release()
+        player?.let { exoPlayer ->
+            playWhenReady = exoPlayer.playWhenReady
+            currentPosition = exoPlayer.currentPosition
+            exoPlayer.release()
+            player = null
         }
-        player = null
-        // Don't release mediaSource to maintain buffer
+    }
+    
+    private fun enterPiPMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Save the current playback state
+            player?.let { exoPlayer ->
+                playWhenReady = exoPlayer.playWhenReady
+                currentPosition = exoPlayer.currentPosition
+            }
+            
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .setActions(listOf(
+                    RemoteAction(
+                        Icon.createWithResource(this, R.drawable.ic_play),
+                        "Play",
+                        "Play video",
+                        PendingIntent.getBroadcast(
+                            this,
+                            0,
+                            Intent(ACTION_PLAY).setPackage(packageName),
+                            PendingIntent.FLAG_IMMUTABLE
+                        )
+                    ),
+                    RemoteAction(
+                        Icon.createWithResource(this, R.drawable.ic_pause),
+                        "Pause",
+                        "Pause video",
+                        PendingIntent.getBroadcast(
+                            this,
+                            1,
+                            Intent(ACTION_PAUSE).setPackage(packageName),
+                            PendingIntent.FLAG_IMMUTABLE
+                        )
+                    )
+                ))
+                .build()
+            
+            try {
+                enterPictureInPictureMode(params)
+                // Update ViewModel with PiP state
+                messagesViewModel.updatePlaybackState(MessagesViewModel.PlaybackState.Playing(videoUrl!!, true))
+            } catch (e: IllegalStateException) {
+                Log.e("VideoPlayer", "Failed to enter PiP mode: ${e.message}")
+            }
+        }
     }
     
     companion object {
         const val EXTRA_VIDEO_URL = "extra_video_url"
-        private const val KEY_POSITION = "position"
-        private const val KEY_IS_PLAYING = "is_playing"
-        private const val KEY_VIDEO_URL = "video_url"
-        private const val KEY_WAS_IN_PIP = "was_in_pip"
+        private const val ACTION_PLAY = "org.rtsda.android.ACTION_PLAY"
+        private const val ACTION_PAUSE = "org.rtsda.android.ACTION_PAUSE"
     }
 } 

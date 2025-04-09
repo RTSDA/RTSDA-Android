@@ -11,12 +11,12 @@
         android:title="@string/title_bulletins" />
 
     <item
-        android:id="@+id/eventsFragment"
+        android:id="@+id/navigation_events"
         android:icon="@drawable/ic_events"
         android:title="@string/title_events" />
 
     <item
-        android:id="@+id/messagesFragment"
+        android:id="@+id/navigation_messages"
         android:icon="@drawable/ic_sermons"
         android:title="@string/title_messages" />
 

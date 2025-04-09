@@ -1,5 +1,6 @@
 package org.rtsda.android.presentation.events
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 import org.rtsda.android.R
 import org.rtsda.android.databinding.FragmentEventsBinding
 import org.rtsda.android.presentation.events.adapter.EventsAdapter
+import org.rtsda.android.presentation.events.detail.EventDetailActivity
 
 @AndroidEntryPoint
 class EventsFragment : Fragment() {
@@ -23,7 +25,21 @@ class EventsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: EventsViewModel by viewModels()
-    private val adapter = EventsAdapter()
+    private val adapter = EventsAdapter { event ->
+        val intent = Intent(requireContext(), EventDetailActivity::class.java).apply {
+            putExtra("eventId", event.id)
+            putExtra("eventTitle", event.title)
+            putExtra("eventDescription", event.description)
+            putExtra("eventStartDate", event.startDate.time)
+            putExtra("eventEndDate", event.endDate.time)
+            putExtra("eventLocation", event.location)
+            putExtra("eventLocationUrl", event.locationUrl)
+            putExtra("eventImageUrl", event.imageUrl)
+            putExtra("eventCategory", event.category)
+            putExtra("eventRecurring", event.reoccuring)
+        }
+        startActivity(intent)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,

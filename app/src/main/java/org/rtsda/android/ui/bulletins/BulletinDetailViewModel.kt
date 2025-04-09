@@ -11,34 +11,28 @@ import org.rtsda.android.domain.model.Bulletin
 import org.rtsda.android.domain.repository.BulletinRepository
 import javax.inject.Inject
 
-data class BulletinDetailUiState(
-    val bulletin: Bulletin? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
+sealed class BulletinDetailState {
+    object Loading : BulletinDetailState()
+    data class Error(val message: String) : BulletinDetailState()
+    data class Success(val bulletin: Bulletin) : BulletinDetailState()
+}
 
 @HiltViewModel
 class BulletinDetailViewModel @Inject constructor(
     private val repository: BulletinRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(BulletinDetailUiState())
-    val uiState: StateFlow<BulletinDetailUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<BulletinDetailState>(BulletinDetailState.Loading)
+    val uiState: StateFlow<BulletinDetailState> = _uiState.asStateFlow()
 
     fun loadBulletin(bulletinId: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = BulletinDetailState.Loading
             try {
                 val bulletin = repository.getBulletinById(bulletinId)
-                _uiState.value = _uiState.value.copy(
-                    bulletin = bulletin,
-                    isLoading = false
-                )
+                _uiState.value = BulletinDetailState.Success(bulletin)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Error loading bulletin",
-                    isLoading = false
-                )
+                _uiState.value = BulletinDetailState.Error(e.message ?: "Error loading bulletin")
             }
         }
     }

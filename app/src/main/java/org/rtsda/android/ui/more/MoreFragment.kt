@@ -7,8 +7,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import org.rtsda.android.BuildConfig
+import org.rtsda.android.MainActivity
 import org.rtsda.android.R
 import org.rtsda.android.databinding.FragmentMoreBinding
 
@@ -49,7 +49,8 @@ class MoreFragment : Fragment() {
 
         // Connect Section
         binding.contactButton.setOnClickListener {
-            findNavController().navigate(R.id.action_moreFragment_to_contactFragment)
+            // TODO: Create ContactActivity and update this
+            // (requireActivity() as MainActivity).navigateToContact()
         }
 
         binding.callButton.setOnClickListener {
@@ -75,7 +76,7 @@ class MoreFragment : Fragment() {
 
         // About Section
         binding.beliefsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_moreFragment_to_beliefsFragment)
+            (requireActivity() as MainActivity).navigateToBeliefs()
         }
 
         // App Info Section

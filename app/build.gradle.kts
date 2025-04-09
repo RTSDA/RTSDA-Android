@@ -15,7 +15,7 @@ android {
         applicationId = "org.rtsda.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = 3
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -30,6 +30,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -70,10 +71,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     
-    // Jellyfin SDK
-    implementation("org.jellyfin.sdk:jellyfin-core:1.0.0")
-    implementation("org.jellyfin.sdk:jellyfin-api:1.0.0")
-    
     // Image Loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
     kapt("com.github.bumptech.glide:compiler:4.16.0")
@@ -81,6 +78,11 @@ dependencies {
     // Media Player
     implementation("androidx.media3:media3-exoplayer:1.2.1")
     implementation("androidx.media3:media3-ui:1.2.1")
+
+    // UI Components
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.1")
+    implementation("androidx.browser:browser:1.7.0")
     
     // Testing
     testImplementation("junit:junit:4.13.2")

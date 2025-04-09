@@ -1,39 +1,51 @@
 package org.rtsda.android.ui.bulletins.adapter
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import org.rtsda.android.data.model.BulletinSection
 import org.rtsda.android.databinding.ItemBulletinSectionBinding
+import org.rtsda.android.domain.model.BulletinSection
 
-class BulletinSectionsAdapter : ListAdapter<BulletinSection, BulletinSectionsAdapter.SectionViewHolder>(SectionDiffCallback()) {
+class BulletinSectionsAdapter : ListAdapter<BulletinSection, BulletinSectionsAdapter.ViewHolder>(DiffCallback()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SectionViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemBulletinSectionBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
-        return SectionViewHolder(binding)
+        return ViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: SectionViewHolder, position: Int) {
-        holder.bind(getItem(position))
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val isLastItem = position == itemCount - 1
+        holder.bind(getItem(position), isLastItem)
     }
 
-    class SectionViewHolder(
+    class ViewHolder(
         private val binding: ItemBulletinSectionBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(section: BulletinSection) {
-            binding.sectionTitle.text = section.title
-            binding.sectionContent.text = section.content
+        fun bind(section: BulletinSection, isLastItem: Boolean) {
+            binding.sectionTitleText.text = section.title
+            
+            // Simply replace newlines with HTML breaks
+            val content = section.content.replace("\n", "<br>")
+            binding.sectionContentText.text = HtmlCompat.fromHtml(
+                content,
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            )
+            
+            // Hide divider for the last item
+            binding.divider.visibility = if (isLastItem) View.GONE else View.VISIBLE
         }
     }
 
-    private class SectionDiffCallback : DiffUtil.ItemCallback<BulletinSection>() {
+    private class DiffCallback : DiffUtil.ItemCallback<BulletinSection>() {
         override fun areItemsTheSame(oldItem: BulletinSection, newItem: BulletinSection): Boolean {
             return oldItem.title == newItem.title
         }

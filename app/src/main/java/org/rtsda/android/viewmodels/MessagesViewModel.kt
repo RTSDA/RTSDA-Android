@@ -1,5 +1,6 @@
 package org.rtsda.android.viewmodels
 
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,9 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.rtsda.android.data.MediaType
-import org.rtsda.android.data.model.Message
-import org.rtsda.android.data.MessagesRepository
+import org.rtsda.android.domain.model.MediaType
+import org.rtsda.android.domain.model.Message
+import org.rtsda.android.domain.repository.MessagesRepository
 import org.rtsda.android.presentation.messages.LiveStreamStatus
 import org.rtsda.android.services.OwnCastService
 import org.rtsda.android.services.Result
@@ -61,10 +62,17 @@ class MessagesViewModel @Inject constructor(
     )
 
     private var currentVideoUrl: String? = null
-    private var isPlayerActive = false
+    private var _isPlayerActive = false
+    val isPlayerActive: Boolean
+        get() = _isPlayerActive
+
+    private var _shouldLaunchPlayer = false
     val shouldLaunchPlayer: Boolean
         get() = _shouldLaunchPlayer
-    private var _shouldLaunchPlayer = false
+
+    val isPlayerInPiP: Boolean
+        get() = _playbackState.value is PlaybackState.Playing && 
+                (_playbackState.value as PlaybackState.Playing).isInPiP
 
     init {
         loadContent()
@@ -137,8 +145,18 @@ class MessagesViewModel @Inject constructor(
                 _isLoading.value = true
                 _error.value = null
 
-                // Force a new player launch by first closing any existing player
-                onPlayerClosed()
+                // If there's an active player, close it before starting a new one
+                if (isPlayerActive) {
+                    // If we're in PiP mode, we need to close the PiP window
+                    if (isPlayerInPiP) {
+                        closeExistingPiP()
+                        // Add a longer delay to ensure PiP is fully closed
+                        kotlinx.coroutines.delay(500)
+                    }
+                    onPlayerClosed()
+                    // Add a small delay to ensure the previous player is fully closed
+                    kotlinx.coroutines.delay(100)
+                }
 
                 if (message.isLiveStream) {
                     // For live streams, use the OwnCast service
@@ -147,9 +165,9 @@ class MessagesViewModel @Inject constructor(
                             if (result.data.online) {
                                 val streamUrl = ownCastService.getStreamUrl()
                                 currentVideoUrl = streamUrl
-                                isPlayerActive = true
+                                _isPlayerActive = true
                                 _shouldLaunchPlayer = true
-                                _playbackState.value = PlaybackState.Playing(streamUrl)
+                                _playbackState.value = PlaybackState.Playing(streamUrl, false)
                             } else {
                                 _error.value = "Stream is not currently live"
                             }
@@ -161,10 +179,15 @@ class MessagesViewModel @Inject constructor(
                 } else {
                     // For regular messages, use the repository
                     val videoUrl = repository.getVideoUrl(message.id)
-                    currentVideoUrl = videoUrl
-                    isPlayerActive = true
-                    _shouldLaunchPlayer = true
-                    _playbackState.value = PlaybackState.Playing(videoUrl)
+                    if (videoUrl != null) {
+                        currentVideoUrl = videoUrl
+                        _isPlayerActive = true
+                        _shouldLaunchPlayer = true
+                        _playbackState.value = PlaybackState.Playing(videoUrl, false)
+                    } else {
+                        _error.value = "Failed to get video URL"
+                        _playbackState.value = PlaybackState.Error("Failed to get video URL")
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = "Failed to get playback info: ${e.message}"
@@ -175,16 +198,35 @@ class MessagesViewModel @Inject constructor(
         }
     }
 
+    private fun closeExistingPiP() {
+        if (isPlayerActive && isPlayerInPiP) {
+            // Send a broadcast to close the PiP window
+            val intent = Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS).apply {
+                putExtra("reason", "close_pip")
+            }
+            android.app.Activity.RESULT_CANCELED.let { resultCode ->
+                android.content.Intent().also { data ->
+                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK.let { flags ->
+                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP.let { clearFlags ->
+                            android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP.let { singleTop ->
+                                android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                        android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun onPlayerClosed() {
-        android.util.Log.d("MessagesViewModel", "onPlayerClosed: isPlayerActive=$isPlayerActive, shouldLaunchPlayer=$_shouldLaunchPlayer")
-        isPlayerActive = false
-        _shouldLaunchPlayer = false
+        _isPlayerActive = false
         _playbackState.value = PlaybackState.Idle
-        currentVideoUrl = null  // Reset the current video URL
+        currentVideoUrl = null
     }
 
     fun onPlayerLaunched() {
-        android.util.Log.d("MessagesViewModel", "onPlayerLaunched: isPlayerActive=$isPlayerActive, shouldLaunchPlayer=$_shouldLaunchPlayer")
         _shouldLaunchPlayer = false
     }
 
@@ -370,9 +412,14 @@ class MessagesViewModel @Inject constructor(
         _availableYears.value = years
     }
 
+    fun updatePlaybackState(state: PlaybackState) {
+        _playbackState.value = state
+        _isPlayerActive = state is PlaybackState.Playing
+    }
+
     sealed class PlaybackState {
         object Idle : PlaybackState()
-        data class Playing(val videoUrl: String) : PlaybackState()
+        data class Playing(val videoUrl: String, val isInPiP: Boolean = false) : PlaybackState()
         data class Error(val message: String) : PlaybackState()
     }
 } 

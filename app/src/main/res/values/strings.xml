@@ -159,4 +159,5 @@
     <string name="bulletins">Bulletins</string>
     <string name="open">Open</string>
     <string name="download_pdf">Download PDF</string>
+    <string name="picture_in_picture">Enter picture-in-picture mode</string>
 </resources> 

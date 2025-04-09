@@ -35,16 +35,31 @@
         </activity>
 
         <activity
-            android:name=".presentation.main.MainActivity"
+            android:name=".MainActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".presentation.events.detail.EventDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".presentation.beliefs.BeliefsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RTSDA.Beliefs" />
 
         <activity
             android:name=".presentation.video.VideoPlayerActivity"
             android:exported="false"
             android:launchMode="singleTask"
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:theme="@style/Theme.RTSDA.NoActionBar" />
+
+        <activity
+            android:name=".BulletinDetailActivity"
+            android:exported="false" />
+
+        <activity android:name=".PdfViewerActivity" />
 
     </application>
 </manifest> 

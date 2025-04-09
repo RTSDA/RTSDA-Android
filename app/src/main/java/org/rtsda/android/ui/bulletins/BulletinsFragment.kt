@@ -9,7 +9,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -17,6 +16,7 @@ import org.rtsda.android.R
 import org.rtsda.android.databinding.FragmentBulletinsBinding
 import org.rtsda.android.presentation.bulletins.BulletinsViewModel
 import org.rtsda.android.ui.bulletins.adapter.BulletinsAdapter
+import org.rtsda.android.MainActivity
 
 @AndroidEntryPoint
 class BulletinsFragment : Fragment() {
@@ -26,9 +26,7 @@ class BulletinsFragment : Fragment() {
 
     private val viewModel: BulletinsViewModel by viewModels()
     private val adapter = BulletinsAdapter { bulletin ->
-        findNavController().navigate(
-            BulletinsFragmentDirections.actionBulletinsToBulletinDetail(bulletin.id)
-        )
+        (requireActivity() as? MainActivity)?.navigateToBulletinDetail(bulletin.id)
     }
 
     override fun onCreateView(
@@ -45,6 +43,7 @@ class BulletinsFragment : Fragment() {
         setupRecyclerView()
         setupSwipeRefresh()
         observeViewModel()
+        loadBulletins()
     }
 
     private fun setupRecyclerView() {
@@ -54,8 +53,12 @@ class BulletinsFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefresh.setOnRefreshListener {
-            viewModel.loadBulletins()
+            loadBulletins()
         }
+    }
+
+    private fun loadBulletins() {
+        viewModel.loadBulletins()
     }
 
     private fun observeViewModel() {

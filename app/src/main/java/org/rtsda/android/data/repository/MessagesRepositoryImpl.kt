@@ -1,7 +1,8 @@
-package org.rtsda.android.data
+package org.rtsda.android.data.repository
 
-import org.rtsda.android.data.model.Message
-import org.rtsda.android.data.repository.MessageRepository
+import org.rtsda.android.domain.model.Message
+import org.rtsda.android.domain.model.MediaType
+import org.rtsda.android.domain.repository.MessagesRepository
 import org.rtsda.android.data.service.JellyfinService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,8 +14,8 @@ class MessagesRepositoryImpl @Inject constructor(
     
     override suspend fun getMessages(mediaType: MediaType): List<Message> {
         return when (mediaType) {
-            MediaType.SERMONS -> jellyfinService.getSermons()
-            MediaType.LIVESTREAMS -> jellyfinService.getLiveStreams()
+            MediaType.SERMONS -> jellyfinService.getSermons().map { it.toDomain() }
+            MediaType.LIVESTREAMS -> jellyfinService.getLiveStreams().map { it.toDomain() }
         }
     }
 

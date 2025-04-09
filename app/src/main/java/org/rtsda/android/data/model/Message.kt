@@ -40,4 +40,17 @@ data class Message(
         } catch (e: Exception) {
             date // Return original string if parsing fails
         }
+
+    fun toDomain(): org.rtsda.android.domain.model.Message {
+        return org.rtsda.android.domain.model.Message(
+            id = id,
+            title = title,
+            speaker = speaker,
+            videoUrl = videoUrl,
+            thumbnailUrl = thumbnailUrl,
+            date = date,
+            description = description,
+            isLiveStream = isLiveStream
+        )
+    }
 } 

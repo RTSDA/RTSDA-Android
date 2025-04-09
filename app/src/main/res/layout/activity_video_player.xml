@@ -16,8 +16,9 @@
         app:use_controller="true"
         app:show_timeout="3000"
         app:resize_mode="fit"
-        app:show_buffering="when_playing"
+        app:show_buffering="never"
         app:surface_type="texture_view"
+        app:player_layout_id="@layout/exo_player_view"
         app:keep_content_on_player_reset="true" />
 
     <ImageButton
@@ -31,15 +32,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <com.google.android.material.progressindicator.CircularProgressIndicator
-        android:id="@+id/bufferingIndicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:indeterminate="true"
+    <ImageButton
+        android:id="@+id/pipButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/picture_in_picture"
+        android:src="@drawable/ic_pip"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

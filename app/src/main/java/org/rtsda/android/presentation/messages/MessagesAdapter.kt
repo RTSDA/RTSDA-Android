@@ -6,7 +6,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import org.rtsda.android.data.model.Message
+import org.rtsda.android.domain.model.Message
 import org.rtsda.android.databinding.ItemLiveStreamBinding
 import org.rtsda.android.databinding.ItemMessageBinding
 
