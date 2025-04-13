@@ -60,6 +60,7 @@
                 android:layout_marginHorizontal="32dp"
                 android:layout_marginBottom="24dp"
                 android:text="View PDF"
+                android:textSize="18sp"
                 android:textColor="@android:color/white"
                 android:backgroundTint="#007AFF"
                 app:icon="@drawable/ic_download"
