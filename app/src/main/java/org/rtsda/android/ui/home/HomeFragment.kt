@@ -7,9 +7,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import org.rtsda.android.R
 import org.rtsda.android.databinding.FragmentHomeBinding
+import org.rtsda.android.MainActivity
 
 class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
@@ -38,7 +38,7 @@ class HomeFragment : Fragment() {
 
     private fun setupClickListeners() {
         binding.contactButton.setOnClickListener {
-            findNavController().navigate(R.id.action_navigation_home_to_contactFragment)
+            (requireActivity() as MainActivity).navigateToContact()
         }
 
         binding.directionsButton.setOnClickListener {

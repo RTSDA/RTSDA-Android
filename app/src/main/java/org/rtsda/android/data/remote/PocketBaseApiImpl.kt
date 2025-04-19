@@ -25,8 +25,8 @@ class PocketBaseApiImpl @Inject constructor(
         return api.getEvents(filter)
     }
 
-    override suspend fun getBulletins(filter: String?): retrofit2.Response<PocketBaseResponse<Bulletin>> {
-        return api.getBulletins(filter)
+    override suspend fun getBulletins(filter: String?, sort: String?): retrofit2.Response<PocketBaseResponse<Bulletin>> {
+        return api.getBulletins(filter, sort)
     }
 
     override suspend fun getMessages(filter: String?): retrofit2.Response<PocketBaseResponse<Message>> {

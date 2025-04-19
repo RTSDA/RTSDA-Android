@@ -49,8 +49,7 @@ class MoreFragment : Fragment() {
 
         // Connect Section
         binding.contactButton.setOnClickListener {
-            // TODO: Create ContactActivity and update this
-            // (requireActivity() as MainActivity).navigateToContact()
+            (requireActivity() as MainActivity).navigateToContact()
         }
 
         binding.callButton.setOnClickListener {

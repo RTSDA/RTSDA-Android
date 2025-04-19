@@ -15,7 +15,10 @@ class MessagesRepositoryImpl @Inject constructor(
     override suspend fun getMessages(mediaType: MediaType): List<Message> {
         return when (mediaType) {
             MediaType.SERMONS -> jellyfinService.getSermons().map { it.toDomain() }
-            MediaType.LIVESTREAMS -> jellyfinService.getLiveStreams().map { it.toDomain() }
+            MediaType.LIVESTREAMS -> {
+                // For live streams, we want to get the archived content
+                jellyfinService.getLiveStreams().map { it.toDomain() }
+            }
         }
     }
 

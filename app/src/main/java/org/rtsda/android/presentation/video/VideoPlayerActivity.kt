@@ -25,10 +25,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerView
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import dagger.hilt.android.AndroidEntryPoint
 import org.rtsda.android.R
 import org.rtsda.android.databinding.ActivityVideoPlayerBinding
@@ -203,6 +205,63 @@ class VideoPlayerActivity : AppCompatActivity() {
     
     private fun initializePlayer() {
         if (player == null) {
+            Log.d("VideoPlayer", "Initializing player with URL: $videoUrl")
+            
+            // Validate URL
+            if (videoUrl.isNullOrEmpty()) {
+                showError("Invalid video URL")
+                return
+            }
+
+            // Configure HTTP data source with logging
+            val dataSourceFactory = DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true)
+                .setConnectTimeoutMs(30000)
+                .setReadTimeoutMs(30000)
+                .setUserAgent("RTSDA-Android")
+                .setTransferListener(object : androidx.media3.datasource.TransferListener {
+                    override fun onTransferInitializing(
+                        source: androidx.media3.datasource.DataSource,
+                        dataSpec: androidx.media3.datasource.DataSpec,
+                        isNetwork: Boolean
+                    ) {
+                        Log.d("VideoPlayer", "Transfer initializing for URL: ${dataSpec.uri}")
+                    }
+
+                    override fun onTransferStart(
+                        source: androidx.media3.datasource.DataSource,
+                        dataSpec: androidx.media3.datasource.DataSpec,
+                        isNetwork: Boolean
+                    ) {
+                        Log.d("VideoPlayer", "Transfer started for URL: ${dataSpec.uri}")
+                    }
+
+                    override fun onBytesTransferred(
+                        source: androidx.media3.datasource.DataSource,
+                        dataSpec: androidx.media3.datasource.DataSpec,
+                        isNetwork: Boolean,
+                        bytesTransferred: Int
+                    ) {
+                        // Not needed for our use case
+                    }
+
+                    override fun onTransferEnd(
+                        source: androidx.media3.datasource.DataSource,
+                        dataSpec: androidx.media3.datasource.DataSpec,
+                        isNetwork: Boolean
+                    ) {
+                        if (source is DefaultHttpDataSource) {
+                            Log.d("VideoPlayer", "Transfer ended for URL: ${dataSpec.uri}")
+                            Log.d("VideoPlayer", "Response code: ${source.responseCode}")
+                            Log.d("VideoPlayer", "Response headers: ${source.responseHeaders}")
+                            val contentType = source.responseHeaders.entries
+                                .find { it.key.equals("Content-Type", ignoreCase = true) }
+                                ?.value
+                            Log.d("VideoPlayer", "Content type: $contentType")
+                        }
+                    }
+                })
+
             player = ExoPlayer.Builder(this)
                 .setLoadControl(
                     androidx.media3.exoplayer.DefaultLoadControl.Builder()
@@ -222,9 +281,12 @@ class VideoPlayerActivity : AppCompatActivity() {
                 )
                 .build()
                 .also { exoPlayer ->
+                    // Set up the player view first
                     binding.playerView.player = exoPlayer
                     binding.playerView.controllerHideOnTouch = true
                     binding.playerView.controllerAutoShow = true
+                    
+                    // Set up controller visibility listener
                     binding.playerView.setControllerVisibilityListener(object : PlayerView.ControllerVisibilityListener {
                         override fun onVisibilityChanged(visibility: Int) {
                             binding.pipButton.visibility = if (visibility == View.VISIBLE && 
@@ -232,12 +294,17 @@ class VideoPlayerActivity : AppCompatActivity() {
                         }
                     })
                     
+                    // Set up PiP button
                     binding.pipButton.setOnClickListener {
                         enterPiPMode()
                     }
                     
                     // Create a new MediaItem for the current video URL
-                    val mediaItem = MediaItem.fromUri(videoUrl!!)
+                    val mediaItem = MediaItem.Builder()
+                        .setUri(videoUrl!!)
+                        .setDrmConfiguration(null) // Disable DRM
+                        .build()
+                    
                     exoPlayer.setMediaItem(mediaItem)
                     
                     // Always start from the beginning
@@ -245,20 +312,86 @@ class VideoPlayerActivity : AppCompatActivity() {
                     exoPlayer.playWhenReady = true
                     exoPlayer.prepare()
                     
+                    // Add player listener
                     exoPlayer.addListener(object : Player.Listener {
                         override fun onPlaybackStateChanged(playbackState: Int) {
-                            if (playbackState == Player.STATE_ENDED) {
-                                finish()
+                            when (playbackState) {
+                                Player.STATE_ENDED -> {
+                                    finish()
+                                }
+                                Player.STATE_READY -> {
+                                    Log.d("VideoPlayer", "Player is ready")
+                                }
+                                Player.STATE_BUFFERING -> {
+                                    Log.d("VideoPlayer", "Player is buffering")
+                                }
+                                Player.STATE_IDLE -> {
+                                    Log.d("VideoPlayer", "Player is idle")
+                                }
                             }
                         }
                         
                         override fun onPlayerError(error: PlaybackException) {
                             Log.e("VideoPlayer", "Playback error: ${error.message}")
-                            finish()
+                            Log.e("VideoPlayer", "Error type: ${error.errorCodeName}")
+                            Log.e("VideoPlayer", "Error code: ${error.errorCode}")
+                            Log.e("VideoPlayer", "Error cause: ${error.cause?.message}")
+                            
+                            val errorMessage = when (error.errorCode) {
+                                PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> {
+                                    "This video format is not supported. Please try a different video or contact support."
+                                }
+                                PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> "Network error. Please check your connection."
+                                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "Network connection failed. Please check your connection."
+                                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Connection timed out. Please try again."
+                                PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "Video file not found."
+                                PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Server error. Please try again later."
+                                PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE -> "Invalid video format. Please contact support."
+                                PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> "Video file is corrupted or in an unsupported format."
+                                else -> "An error occurred during playback: ${error.message}"
+                            }
+                            
+                            showError(errorMessage)
                         }
                     })
                 }
         }
+    }
+    
+    private fun determineMimeType(url: String): String {
+        // First try to get from URL extension
+        val extension = url.substringAfterLast('.', "").lowercase()
+        val mimeTypeFromExtension = when (extension) {
+            "mp4" -> "video/mp4"
+            "webm" -> "video/webm"
+            "mkv" -> "video/x-matroska"
+            "3gp" -> "video/3gpp"
+            "mov" -> "video/quicktime"
+            "avi" -> "video/x-msvideo"
+            "wmv" -> "video/x-ms-wmv"
+            "flv" -> "video/x-flv"
+            "m4v" -> "video/x-m4v"
+            "mpeg" -> "video/mpeg"
+            "mpg" -> "video/mpeg"
+            "ts" -> "video/mp2t"
+            else -> null
+        }
+        
+        if (mimeTypeFromExtension != null) {
+            Log.d("VideoPlayer", "Determined MIME type from extension: $mimeTypeFromExtension")
+            return mimeTypeFromExtension
+        }
+        
+        // Default to mp4 if we can't determine
+        Log.d("VideoPlayer", "Using default MIME type: video/mp4")
+        return "video/mp4"
+    }
+    
+    private fun showError(message: String) {
+        binding.errorText.text = message
+        binding.errorText.visibility = View.VISIBLE
+        binding.playerView.visibility = View.GONE
+        binding.pipButton.visibility = View.GONE
     }
     
     private fun releasePlayer() {

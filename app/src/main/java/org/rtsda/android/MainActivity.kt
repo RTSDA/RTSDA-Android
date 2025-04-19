@@ -17,6 +17,7 @@ import org.rtsda.android.presentation.events.EventsFragment
 import org.rtsda.android.presentation.messages.MessagesFragment
 import org.rtsda.android.ui.more.MoreFragment
 import org.rtsda.android.BulletinDetailActivity
+import org.rtsda.android.ContactActivity
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -71,13 +72,28 @@ class MainActivity : AppCompatActivity() {
     private fun setupBottomNavigation() {
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_home -> viewPager.setCurrentItem(0, false)
-                R.id.navigation_bulletins -> viewPager.setCurrentItem(1, false)
-                R.id.navigation_events -> viewPager.setCurrentItem(2, false)
-                R.id.navigation_messages -> viewPager.setCurrentItem(3, false)
-                R.id.navigation_more -> viewPager.setCurrentItem(4, false)
+                R.id.navigation_home -> {
+                    viewPager.setCurrentItem(0, false)
+                    true
+                }
+                R.id.navigation_bulletins -> {
+                    viewPager.setCurrentItem(1, false)
+                    true
+                }
+                R.id.navigation_events -> {
+                    viewPager.setCurrentItem(2, false)
+                    true
+                }
+                R.id.navigation_messages -> {
+                    viewPager.setCurrentItem(3, false)
+                    true
+                }
+                R.id.navigation_more -> {
+                    viewPager.setCurrentItem(4, false)
+                    true
+                }
+                else -> false
             }
-            true
         }
 
         // Set initial selection
@@ -99,6 +115,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        if (viewPager.currentItem != 0) {
+            viewPager.setCurrentItem(0, false)
+        } else {
+            super.onBackPressed()
+        }
+    }
+
     fun navigateToBulletinDetail(bulletinId: String) {
         val intent = BulletinDetailActivity.newIntent(this, bulletinId)
         startActivity(intent)
@@ -106,6 +130,11 @@ class MainActivity : AppCompatActivity() {
 
     fun navigateToBeliefs() {
         val intent = BeliefsActivity.newIntent(this)
+        startActivity(intent)
+    }
+
+    fun navigateToContact() {
+        val intent = ContactActivity.newIntent(this)
         startActivity(intent)
     }
 } 

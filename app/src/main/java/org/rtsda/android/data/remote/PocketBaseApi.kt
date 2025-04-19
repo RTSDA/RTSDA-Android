@@ -22,7 +22,10 @@ interface PocketBaseApi {
     suspend fun getEvents(@Query("filter") filter: String? = null): Response<PocketBaseResponse<Event>>
 
     @GET("api/collections/bulletins/records")
-    suspend fun getBulletins(@Query("filter") filter: String? = null): Response<PocketBaseResponse<Bulletin>>
+    suspend fun getBulletins(
+        @Query("filter") filter: String? = null,
+        @Query("sort") sort: String? = null
+    ): Response<PocketBaseResponse<Bulletin>>
 
     @GET("api/collections/messages/records")
     suspend fun getMessages(@Query("filter") filter: String? = null): Response<PocketBaseResponse<Message>>

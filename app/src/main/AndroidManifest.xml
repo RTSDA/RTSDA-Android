@@ -36,7 +36,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
+            android:exported="true" />
 
         <activity
             android:name=".presentation.events.detail.EventDetailActivity"
@@ -45,7 +45,7 @@
         <activity
             android:name=".presentation.beliefs.BeliefsActivity"
             android:exported="false"
-            android:theme="@style/Theme.RTSDA.Beliefs" />
+            android:theme="@style/Theme.RTSDA" />
 
         <activity
             android:name=".presentation.video.VideoPlayerActivity"
@@ -57,9 +57,15 @@
 
         <activity
             android:name=".BulletinDetailActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.RTSDA.NoActionBar" />
 
         <activity android:name=".PdfViewerActivity" />
+
+        <activity
+            android:name=".ContactActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RTSDA" />
 
     </application>
 </manifest> 

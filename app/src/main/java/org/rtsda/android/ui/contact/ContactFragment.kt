@@ -1,6 +1,8 @@
 package org.rtsda.android.ui.contact
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +26,10 @@ class ContactFragment : Fragment() {
     private var _binding: FragmentContactBinding? = null
     private val binding get() = _binding!!
 
+    companion object {
+        fun newInstance() = ContactFragment()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -36,6 +42,7 @@ class ContactFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupPhoneNumberFormatting()
         binding.submitButton.setOnClickListener {
             if (validateForm()) {
                 submitForm()
@@ -43,20 +50,66 @@ class ContactFragment : Fragment() {
         }
     }
 
+    private fun setupPhoneNumberFormatting() {
+        binding.phoneEditText.addTextChangedListener(object : TextWatcher {
+            private var isFormatting = false
+            private var lastLength = 0
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                lastLength = s?.length ?: 0
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                // No implementation needed
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                if (isFormatting) return
+                isFormatting = true
+
+                val digits = s.toString().replace("[^0-9]".toRegex(), "")
+                val formatted = StringBuilder()
+
+                if (digits.length >= 3) {
+                    formatted.append("(${digits.substring(0, 3)})")
+                    if (digits.length >= 6) {
+                        formatted.append(" ${digits.substring(3, 6)}")
+                        if (digits.length >= 10) {
+                            formatted.append("-${digits.substring(6, 10)}")
+                        } else if (digits.length > 6) {
+                            formatted.append("-${digits.substring(6)}")
+                        }
+                    } else if (digits.length > 3) {
+                        formatted.append(" ${digits.substring(3)}")
+                    }
+                } else {
+                    formatted.append(digits)
+                }
+
+                if (s.toString() != formatted.toString()) {
+                    s?.replace(0, s.length, formatted)
+                }
+
+                isFormatting = false
+            }
+        })
+    }
+
     private fun validateForm(): Boolean {
         var isValid = true
+        val emailPattern = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+"
 
         // Validate first name
-        if (binding.firstNameEditText.text.isNullOrEmpty()) {
-            binding.firstNameLayout.error = getString(R.string.error_required, getString(R.string.first_name))
+        if (binding.firstNameEditText.text.isNullOrBlank()) {
+            binding.firstNameLayout.error = getString(R.string.contact_name_error)
             isValid = false
         } else {
             binding.firstNameLayout.error = null
         }
 
         // Validate last name
-        if (binding.lastNameEditText.text.isNullOrEmpty()) {
-            binding.lastNameLayout.error = getString(R.string.error_required, getString(R.string.last_name))
+        if (binding.lastNameEditText.text.isNullOrBlank()) {
+            binding.lastNameLayout.error = getString(R.string.contact_name_error)
             isValid = false
         } else {
             binding.lastNameLayout.error = null
@@ -64,31 +117,31 @@ class ContactFragment : Fragment() {
 
         // Validate email
         val email = binding.emailEditText.text.toString()
-        if (email.isEmpty()) {
-            binding.emailLayout.error = getString(R.string.error_required, getString(R.string.email))
+        if (email.isBlank()) {
+            binding.emailLayout.error = getString(R.string.contact_email_error)
             isValid = false
-        } else if (!isValidEmail(email)) {
-            binding.emailLayout.error = getString(R.string.error_invalid_email)
+        } else if (!email.matches(emailPattern.toRegex())) {
+            binding.emailLayout.error = getString(R.string.contact_email_invalid)
             isValid = false
         } else {
             binding.emailLayout.error = null
         }
 
-        // Validate phone (optional)
-        val phone = binding.phoneEditText.text.toString()
-        if (phone.isNotEmpty() && !isValidPhone(phone)) {
-            binding.phoneLayout.error = getString(R.string.error_invalid_phone)
-            isValid = false
-        } else {
-            binding.phoneLayout.error = null
-        }
-
         // Validate message
-        if (binding.messageEditText.text.isNullOrEmpty()) {
-            binding.messageLayout.error = getString(R.string.error_required, getString(R.string.message))
+        if (binding.messageEditText.text.isNullOrBlank()) {
+            binding.messageLayout.error = getString(R.string.contact_message_error)
             isValid = false
         } else {
             binding.messageLayout.error = null
+        }
+
+        // Validate phone number
+        val phoneNumber = binding.phoneEditText.text.toString().filter { it.isDigit() }
+        if (phoneNumber.isNotBlank() && phoneNumber.length != 10) {
+            binding.phoneLayout.error = getString(R.string.contact_phone_error)
+            isValid = false
+        } else {
+            binding.phoneLayout.error = null
         }
 
         return isValid
@@ -97,11 +150,6 @@ class ContactFragment : Fragment() {
     private fun isValidEmail(email: String): Boolean {
         val emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$"
         return Pattern.compile(emailRegex).matcher(email).matches()
-    }
-
-    private fun isValidPhone(phone: String): Boolean {
-        val phoneRegex = "^[0-9]{10}$"
-        return Pattern.compile(phoneRegex).matcher(phone.replace("[^0-9]".toRegex(), "")).matches()
     }
 
     private fun submitForm() {
@@ -124,23 +172,28 @@ class ContactFragment : Fragment() {
     }
 
     private fun showSuccessDialog() {
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(requireContext(), R.style.MaterialAlertDialog_Rounded)
             .setTitle(R.string.success_title)
             .setMessage(R.string.success_message)
             .setPositiveButton(android.R.string.ok) { dialog, _ ->
                 dialog.dismiss()
                 clearForm()
+                requireActivity().finish()
             }
+            .setBackgroundInsetStart(32)
+            .setBackgroundInsetEnd(32)
             .show()
     }
 
     private fun showErrorDialog() {
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(requireContext(), R.style.MaterialAlertDialog_Rounded)
             .setTitle(R.string.error_title)
             .setMessage(R.string.error_message)
             .setPositiveButton(android.R.string.ok) { dialog, _ ->
                 dialog.dismiss()
             }
+            .setBackgroundInsetStart(32)
+            .setBackgroundInsetEnd(32)
             .show()
     }
 

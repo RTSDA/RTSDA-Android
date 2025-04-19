@@ -30,6 +30,9 @@ import org.rtsda.android.presentation.video.VideoPlayerActivity
 import java.text.SimpleDateFormat
 import java.util.*
 import android.content.Intent
+import android.util.Log
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 
 @AndroidEntryPoint
 class MessagesFragment : Fragment() {
@@ -90,34 +93,42 @@ class MessagesFragment : Fragment() {
 
     private fun setupObservers() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.filteredMessages.collectLatest { messages ->
-                android.util.Log.d("MessagesFragment", "Messages updated: ${messages.size}")
-                // Store current scroll position
-                val layoutManager = binding.messagesRecyclerView.layoutManager as LinearLayoutManager
-                val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
-                val firstVisibleView = layoutManager.findViewByPosition(firstVisiblePosition)
-                val offset = firstVisibleView?.top ?: 0
-
-                adapter.submitList(messages) {
-                    // Restore scroll position after list update
-                    if (firstVisiblePosition >= 0) {
-                        layoutManager.scrollToPositionWithOffset(firstVisiblePosition, offset)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.filteredMessages.collect { messages ->
+                        Log.d("MessagesFragment", "Received ${messages.size} filtered messages")
+                        adapter.submitList(messages)
+                        binding.swipeRefresh.isRefreshing = false
+                        
+                        // Scroll to top when we receive new messages
+                        if (messages.isNotEmpty()) {
+                            binding.messagesRecyclerView.scrollToPosition(0)
+                        }
                     }
                 }
-                updateEmptyState(messages.isEmpty())
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.isLoading.collectLatest { isLoading ->
-                binding.swipeRefresh.isRefreshing = isLoading
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.error.collectLatest { error ->
-                binding.errorText.visibility = if (error != null) View.VISIBLE else View.GONE
-                binding.errorText.text = error
+                
+                launch {
+                    viewModel.isLoading.collect { isLoading ->
+                        Log.d("MessagesFragment", "Loading state changed: $isLoading")
+                        binding.swipeRefresh.isRefreshing = isLoading
+                        if (isLoading) {
+                            binding.errorText.visibility = View.GONE
+                        }
+                    }
+                }
+                
+                launch {
+                    viewModel.error.collect { error ->
+                        Log.d("MessagesFragment", "Error state changed: $error")
+                        if (error != null) {
+                            binding.errorText.visibility = View.VISIBLE
+                            binding.errorText.text = error
+                            binding.swipeRefresh.isRefreshing = false
+                        } else {
+                            binding.errorText.visibility = View.GONE
+                        }
+                    }
+                }
             }
         }
 
@@ -189,8 +200,19 @@ class MessagesFragment : Fragment() {
 
     private fun setupSwipeRefresh() {
         binding.swipeRefresh.setOnRefreshListener {
+            Log.d("MessagesFragment", "Swipe refresh triggered")
             viewModel.refreshContent()
         }
+        
+        // Set the refresh indicator colors
+        binding.swipeRefresh.setColorSchemeResources(
+            R.color.primary,
+            R.color.primary_dark,
+            R.color.primary
+        )
+        
+        // Set the background color
+        binding.swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.background)
     }
 
     private fun setupFilterButton() {

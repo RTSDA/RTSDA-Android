@@ -22,6 +22,7 @@ class MessagesAdapter(
 
     private var liveStreamStatus: LiveStreamStatus? = null
     private var currentList: List<Message> = emptyList()
+    private var recyclerView: RecyclerView? = null
 
     fun setLiveStreamStatus(status: LiveStreamStatus?) {
         val oldStatus = liveStreamStatus
@@ -105,7 +106,22 @@ class MessagesAdapter(
 
     override fun submitList(list: List<Message>?) {
         currentList = list ?: emptyList()
-        super.submitList(list)
+        super.submitList(list) {
+            // After the list is updated, scroll to top
+            if (list?.isNotEmpty() == true) {
+                recyclerView?.scrollToPosition(0)
+            }
+        }
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        this.recyclerView = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        this.recyclerView = null
     }
 
     inner class LiveStreamViewHolder(

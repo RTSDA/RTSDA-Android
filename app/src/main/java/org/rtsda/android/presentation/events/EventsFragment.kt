@@ -39,6 +39,7 @@ class EventsFragment : Fragment() {
             putExtra("eventRecurring", event.reoccuring)
         }
         startActivity(intent)
+        requireActivity().overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 
     override fun onCreateView(

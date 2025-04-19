@@ -15,8 +15,8 @@ android {
         applicationId = "org.rtsda.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "1.0-beta6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,6 +78,7 @@ dependencies {
     // Media Player
     implementation("androidx.media3:media3-exoplayer:1.2.1")
     implementation("androidx.media3:media3-ui:1.2.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
 
     // UI Components
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")

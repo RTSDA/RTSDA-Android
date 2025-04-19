@@ -5,10 +5,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import org.rtsda.android.domain.model.MediaType
 import org.rtsda.android.domain.model.Message
 import org.rtsda.android.domain.repository.MessagesRepository
@@ -74,14 +77,22 @@ class MessagesViewModel @Inject constructor(
         get() = _playbackState.value is PlaybackState.Playing && 
                 (_playbackState.value as PlaybackState.Playing).isInPiP
 
+    private var liveStreamUpdateJob: Job? = null
+
     init {
+        Log.d("MessagesViewModel", "Initializing with media type: ${_currentMediaType.value}")
         loadContent()
         startLiveStreamStatusUpdates()
     }
 
     private fun startLiveStreamStatusUpdates() {
-        viewModelScope.launch {
+        // Cancel any existing update job
+        liveStreamUpdateJob?.cancel()
+        
+        liveStreamUpdateJob = viewModelScope.launch {
             while (true) {
+                if (!isActive) break
+                
                 try {
                     Log.d("MessagesViewModel", "Checking live stream status...")
                     when (val result = ownCastService.getStreamStatus()) {
@@ -102,33 +113,43 @@ class MessagesViewModel @Inject constructor(
                         }
                         is Result.Error -> {
                             Log.e("MessagesViewModel", "Error checking stream status: ${result.exception.message}")
-                            _liveStreamStatus.value = null
+                            // Don't update the status on error, keep the existing one
                         }
                     }
                 } catch (e: Exception) {
                     Log.e("MessagesViewModel", "Error updating live stream status", e)
+                    // Don't update the status on error, keep the existing one
                 }
-                kotlinx.coroutines.delay(5000) // Update every 5 seconds
+                delay(5000) // Update every 5 seconds
             }
         }
     }
 
     fun loadContent(mediaType: MediaType = currentMediaType.value) {
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
             try {
+                _isLoading.value = true
+                _error.value = null
+                
+                Log.d("MessagesViewModel", "Loading content for media type: $mediaType")
+                
                 val messages = repository.getMessages(mediaType)
+                Log.d("MessagesViewModel", "Loaded ${messages.size} messages")
                 _originalMessages.value = messages
-                _filteredMessages.value = messages
-                updateAvailableFilters(messages)
                 
                 // Only apply filters if we have a year or month selected
                 if (selectedYear.value != null || selectedMonth.value != null) {
                     applyFilters()
+                } else {
+                    // If no filters are selected, show all messages
+                    _filteredMessages.value = messages
                 }
+                
+                updateAvailableFilters(messages)
             } catch (e: Exception) {
+                Log.e("MessagesViewModel", "Error loading content", e)
                 _error.value = e.message ?: "Error loading content"
+                // Keep the existing messages if there was an error
             } finally {
                 _isLoading.value = false
             }
@@ -136,6 +157,10 @@ class MessagesViewModel @Inject constructor(
     }
 
     fun refreshContent() {
+        // Don't refresh if we're already loading
+        if (_isLoading.value) {
+            return
+        }
         loadContent()
     }
 
@@ -164,10 +189,14 @@ class MessagesViewModel @Inject constructor(
                         is Result.Success -> {
                             if (result.data.online) {
                                 val streamUrl = ownCastService.getStreamUrl()
-                                currentVideoUrl = streamUrl
-                                _isPlayerActive = true
-                                _shouldLaunchPlayer = true
-                                _playbackState.value = PlaybackState.Playing(streamUrl, false)
+                                if (streamUrl != null) {
+                                    currentVideoUrl = streamUrl
+                                    _isPlayerActive = true
+                                    _shouldLaunchPlayer = true
+                                    _playbackState.value = PlaybackState.Playing(streamUrl, false)
+                                } else {
+                                    _error.value = "Failed to get stream URL"
+                                }
                             } else {
                                 _error.value = "Stream is not currently live"
                             }
@@ -177,21 +206,16 @@ class MessagesViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    // For regular messages, use the repository
+                    // For archived content, use the repository
                     val videoUrl = repository.getVideoUrl(message.id)
-                    if (videoUrl != null) {
-                        currentVideoUrl = videoUrl
-                        _isPlayerActive = true
-                        _shouldLaunchPlayer = true
-                        _playbackState.value = PlaybackState.Playing(videoUrl, false)
-                    } else {
-                        _error.value = "Failed to get video URL"
-                        _playbackState.value = PlaybackState.Error("Failed to get video URL")
-                    }
+                    currentVideoUrl = videoUrl
+                    _isPlayerActive = true
+                    _shouldLaunchPlayer = true
+                    _playbackState.value = PlaybackState.Playing(videoUrl, false)
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to get playback info: ${e.message}"
-                _playbackState.value = PlaybackState.Error(e.message ?: "Unknown error")
+                Log.e("MessagesViewModel", "Error selecting message", e)
+                _error.value = "Failed to play video: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -294,35 +318,37 @@ class MessagesViewModel @Inject constructor(
     }
 
     fun resetFilters() {
+        Log.d("MessagesViewModel", "Resetting all filters")
         _selectedYear.value = null
         _selectedMonth.value = null
         _availableMonths.value = emptyList()
-        applyFilters()
+        _availableYears.value = emptyList()
+        
+        // Force a reload of the content to ensure clean state
+        loadContent()
     }
 
     fun applyFilters() {
         val year = _selectedYear.value
         val month = _selectedMonth.value
         val allMessages = _originalMessages.value
+        val currentType = _currentMediaType.value
 
-        Log.d("MessagesViewModel", "Applying filters - Year: $year, Month: $month")
+        Log.d("MessagesViewModel", "Applying filters - Media Type: $currentType, Year: $year, Month: $month")
         Log.d("MessagesViewModel", "Total messages before filtering: ${allMessages.size}")
-        Log.d("MessagesViewModel", "All messages:")
-        allMessages.forEach { message ->
-            Log.d("MessagesViewModel", "Title: ${message.title}, Date: ${message.date}")
-        }
 
         // First filter by media type
         val typeFiltered = allMessages.filter { message ->
-            val isLiveStream = _currentMediaType.value == MediaType.LIVESTREAMS
-            message.isLiveStream == isLiveStream
+            when (currentType) {
+                MediaType.LIVESTREAMS -> message.isLiveStream
+                MediaType.SERMONS -> !message.isLiveStream
+                else -> true
+            }.also { matches ->
+                Log.d("MessagesViewModel", "Message: ${message.title}, isLiveStream: ${message.isLiveStream}, matchesType: $matches")
+            }
         }
 
         Log.d("MessagesViewModel", "Messages after media type filtering: ${typeFiltered.size}")
-        Log.d("MessagesViewModel", "Messages after media type filtering:")
-        typeFiltered.forEach { message ->
-            Log.d("MessagesViewModel", "Title: ${message.title}, Date: ${message.date}")
-        }
 
         // Then filter by date components
         val newFilteredMessages = typeFiltered.filter { message ->
@@ -330,32 +356,30 @@ class MessagesViewModel @Inject constructor(
             val dateParts = message.date.split(" ")
             if (dateParts.size < 3) {
                 Log.d("MessagesViewModel", "Invalid date format: ${message.date}")
-                return@filter false
+                return@filter true // Don't filter out messages with invalid dates
             }
             
             val messageMonth = dateParts[0]
             val messageYear = dateParts[2]
-
-            Log.d("MessagesViewModel", "Checking message - Title: ${message.title}, Date: ${message.date}, Year: $messageYear, Month: $messageMonth")
 
             val matches = when {
                 year != null && month != null -> {
                     // If both year and month are selected, only show messages that match both
                     val yearMatch = messageYear == year
                     val monthMatch = messageMonth == month
-                    Log.d("MessagesViewModel", "Year match: $yearMatch, Month match: $monthMatch")
+                    Log.d("MessagesViewModel", "Checking message - Title: ${message.title}, Year match: $yearMatch, Month match: $monthMatch")
                     yearMatch && monthMatch
                 }
                 year != null -> {
                     // If only year is selected, show all messages for that year
                     val yearMatch = messageYear == year
-                    Log.d("MessagesViewModel", "Year match: $yearMatch")
+                    Log.d("MessagesViewModel", "Checking message - Title: ${message.title}, Year match: $yearMatch")
                     yearMatch
                 }
                 month != null -> {
                     // If only month is selected, show all messages for that month across all years
                     val monthMatch = messageMonth == month
-                    Log.d("MessagesViewModel", "Month match: $monthMatch")
+                    Log.d("MessagesViewModel", "Checking message - Title: ${message.title}, Month match: $monthMatch")
                     monthMatch
                 }
                 else -> true
@@ -367,7 +391,7 @@ class MessagesViewModel @Inject constructor(
             matches
         }
 
-        Log.d("MessagesViewModel", "Messages after filtering: ${newFilteredMessages.size}")
+        Log.d("MessagesViewModel", "Final filtered messages count: ${newFilteredMessages.size}")
         _filteredMessages.value = newFilteredMessages
     }
 
@@ -421,5 +445,10 @@ class MessagesViewModel @Inject constructor(
         object Idle : PlaybackState()
         data class Playing(val videoUrl: String, val isInPiP: Boolean = false) : PlaybackState()
         data class Error(val message: String) : PlaybackState()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        liveStreamUpdateJob?.cancel()
     }
 } 

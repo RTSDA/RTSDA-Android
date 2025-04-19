@@ -59,6 +59,12 @@
     <string name="contact_send">Send</string>
     <string name="contact_success">Message sent successfully</string>
     <string name="contact_error">Error sending message</string>
+    <string name="contact_name_error">Please enter your name</string>
+    <string name="contact_email_error">Please enter your email</string>
+    <string name="contact_email_invalid">Please enter a valid email address</string>
+    <string name="contact_subject_error">Please enter a subject</string>
+    <string name="contact_message_error">Please enter a message</string>
+    <string name="contact_phone_error">Phone number must be 10 digits</string>
     
     <!-- Cast -->
     <string name="cast_app_id">[REPLACE_WITH_YOUR_CAST_APP_ID]</string>
