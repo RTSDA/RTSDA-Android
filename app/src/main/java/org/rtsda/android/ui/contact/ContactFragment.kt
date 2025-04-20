@@ -6,6 +6,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -42,6 +43,16 @@ class ContactFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Enable back press handling
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    requireActivity().finish()
+                }
+            }
+        )
+
         setupPhoneNumberFormatting()
         binding.submitButton.setOnClickListener {
             if (validateForm()) {
@@ -53,10 +64,9 @@ class ContactFragment : Fragment() {
     private fun setupPhoneNumberFormatting() {
         binding.phoneEditText.addTextChangedListener(object : TextWatcher {
             private var isFormatting = false
-            private var lastLength = 0
 
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                lastLength = s?.length ?: 0
+                // No implementation needed
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -68,26 +78,23 @@ class ContactFragment : Fragment() {
                 isFormatting = true
 
                 val digits = s.toString().replace("[^0-9]".toRegex(), "")
-                val formatted = StringBuilder()
+                val cursorPosition = binding.phoneEditText.selectionStart
 
-                if (digits.length >= 3) {
-                    formatted.append("(${digits.substring(0, 3)})")
-                    if (digits.length >= 6) {
-                        formatted.append(" ${digits.substring(3, 6)}")
-                        if (digits.length >= 10) {
-                            formatted.append("-${digits.substring(6, 10)}")
-                        } else if (digits.length > 6) {
-                            formatted.append("-${digits.substring(6)}")
-                        }
-                    } else if (digits.length > 3) {
-                        formatted.append(" ${digits.substring(3)}")
+                // Only format if we have exactly 10 digits
+                if (digits.length == 10) {
+                    val formatted = "(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
+                    if (s.toString() != formatted) {
+                        s?.replace(0, s.length, formatted)
+                        // Set cursor to end after formatting
+                        binding.phoneEditText.setSelection(formatted.length)
                     }
                 } else {
-                    formatted.append(digits)
-                }
-
-                if (s.toString() != formatted.toString()) {
-                    s?.replace(0, s.length, formatted)
+                    // Just show the digits as they are typed
+                    if (s.toString() != digits) {
+                        s?.replace(0, s.length, digits)
+                        // Keep cursor at the end of the digits
+                        binding.phoneEditText.setSelection(digits.length)
+                    }
                 }
 
                 isFormatting = false
